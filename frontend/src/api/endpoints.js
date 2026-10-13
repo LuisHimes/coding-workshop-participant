@@ -6,7 +6,8 @@
 import { request } from './client'
 
 export const auth = {
-  login: (userId, password) => request('auth', '/token', { method: 'POST', form: { username: userId, password } }),
+  // OAuth2's password flow names the login field "username"; it holds the email
+  login: (email, password) => request('auth', '/token', { method: 'POST', form: { username: email, password } }),
   me: () => request('auth', '/me'),
   updateMe: (body) => request('auth', '/me', { method: 'PATCH', body }),
   changePassword: (currentPassword, newPassword) =>
@@ -61,6 +62,8 @@ export const projects = {
 }
 
 export const milestones = {
+  /** Milestones of every open project you can see that overlap start..end (ISO dates, both optional). */
+  list: (range) => request('milestones', '', { query: range }),
   active: () => request('milestones', '/active'),
   get: (milestoneId) => request('milestones', `/${milestoneId}`),
   update: (milestoneId, body) => request('milestones', `/${milestoneId}`, { method: 'PATCH', body }),

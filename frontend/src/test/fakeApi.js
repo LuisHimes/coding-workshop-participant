@@ -53,6 +53,7 @@ const routes = {
     { milestone_id: 11, sequence: 2, title: milestone2.title, status: 'not_started', start_date: milestone2.start_date, end_date: milestone2.end_date, overdue: false, depends_on_milestone_id: 10, blocked: true, tasks_total: 0, tasks_done: 0, completion_pct: '0', assignees: [], tasks: [] },
   ],
   'GET /api/projects/1/budget-estimate': { project_id: 1, estimated_cost: '240000.00' },
+  'GET /api/milestones': [milestone, milestone2],
   'GET /api/milestones/10': milestone,
   'GET /api/milestones/10/tasks': [{ id: 100, milestone_id: 10, title: 'Unrack 250 servers', is_done: true, done_at: '2026-10-01T09:00:00Z', done_by: 'EMP001', created_at: '2026-09-01T09:00:00Z', updated_at: '2026-10-01T09:00:00Z' }],
   'GET /api/milestones/10/assignments': [{ id: 1, milestone_id: 10, project_id: 1, user_id: 'EMP001', assigned_at: '2026-09-02T09:00:00Z', finished_at: null }],

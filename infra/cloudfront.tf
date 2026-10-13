@@ -6,6 +6,26 @@ resource "aws_cloudfront_origin_access_control" "this" {
   signing_protocol                  = "sigv4"
 }
 
+# Sends app screens (any path without a file extension) to index.html, so direct
+# links and refreshes work. Replaces a distribution-wide 404 -> index.html rule,
+# which also turned API 404 responses into the website with a 200 status.
+resource "aws_cloudfront_function" "spa_routes" {
+  count   = data.aws_caller_identity.this.id != "000000000000" ? 1 : 0
+  name    = format("%s-spa-routes", local.origin_id)
+  runtime = "cloudfront-js-2.0"
+  comment = "Serve index.html for single-page app routes"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      if (!request.uri.includes('.')) {
+        request.uri = '/index.html';
+      }
+      return request;
+    }
+  EOT
+}
+
 resource "aws_cloudfront_distribution" "this" {
   count               = data.aws_caller_identity.this.id != "000000000000" ? 1 : 0
   enabled             = true
@@ -37,13 +57,6 @@ resource "aws_cloudfront_distribution" "this" {
         origin_ssl_protocols   = ["TLSv1.2"]
       }
     }
-  }
-
-  custom_error_response {
-    error_code            = 404
-    error_caching_min_ttl = 300
-    response_code         = 200
-    response_page_path    = "/index.html"
   }
 
   # logging_config {
@@ -96,6 +109,13 @@ resource "aws_cloudfront_distribution" "this" {
 
     target_origin_id       = local.origin_id
     viewer_protocol_policy = "redirect-to-https"
+
+    # Single-page app: screens like /projects/12 are served index.html.
+    # Only the website uses this; /api/* behaviors pass errors through untouched.
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = element(aws_cloudfront_function.spa_routes.*.arn, count.index)
+    }
 
     forwarded_values {
       query_string = false

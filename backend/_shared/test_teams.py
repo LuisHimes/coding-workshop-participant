@@ -199,7 +199,7 @@ def test_team_routes_end_to_end(db, svc, org):
     try:
         client = TestClient(app)
         svc.user_repo.set_password(org.mia["id"], hash_password("a long password"), must_change_password=False)  # log in as Mia
-        token = client.post("/auth/token", data={"username": org.mia["id"], "password": "a long password"}).json()
+        token = client.post("/auth/token", data={"username": org.mia["email"], "password": "a long password"}).json()
         headers = {"Authorization": f"Bearer {token['access_token']}"}
 
         team = client.post("/teams", headers=headers, json={"name": "Racking"})

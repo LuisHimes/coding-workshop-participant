@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from './App'
 import { admin, calls, respond, unexpected } from './test/fakeApi'
@@ -12,21 +12,21 @@ function renderAt(path, { loggedIn = true } = {}) {
 describe('logging in', () => {
   it('logs in and opens the dashboard', async () => {
     renderAt('/', { loggedIn: false })
-    fireEvent.change(await screen.findByLabelText(/User ID/), { target: { value: 'admin1' } })
+    fireEvent.change(await screen.findByLabelText(/Email/), { target: { value: 'ada@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'a long password' } })
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }))
     expect(await screen.findByText('Welcome back, Ada')).toBeTruthy()
     const login = calls.find((c) => c.route === 'POST /api/auth/token')
-    expect(String(login.body)).toBe('username=ADMIN1&password=a+long+password')
+    expect(String(login.body)).toBe('username=ada%40example.com&password=a+long+password')
   })
 
   it('shows the API error when login fails', async () => {
-    respond('POST /api/auth/token', { detail: 'Incorrect user ID or password' }, 401)
+    respond('POST /api/auth/token', { detail: 'Incorrect email or password' }, 401)
     renderAt('/', { loggedIn: false })
-    fireEvent.change(await screen.findByLabelText(/User ID/), { target: { value: 'ADMIN1' } })
+    fireEvent.change(await screen.findByLabelText(/Email/), { target: { value: 'ada@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'wrong' } })
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }))
-    expect(await screen.findByText('Incorrect user ID or password')).toBeTruthy()
+    expect(await screen.findByText('Incorrect email or password')).toBeTruthy()
   })
 
   it('requires a new password after logging in with a temporary one', async () => {
@@ -49,6 +49,7 @@ describe('admin screens', () => {
   const pages = [
     ['/', 'Welcome back, Ada', 'Decommission 1000 servers'],
     ['/projects', 'Projects', 'Old intranet'],
+    ['/calendar?month=2026-10', 'Calendar', '1. Q1: 250 servers'],
     ['/users', 'Users', 'grace@example.com'],
     ['/teams', 'Teams', 'Racking crew'],
     ['/teams/5', 'Racking crew', 'Engineer'],
@@ -78,7 +79,7 @@ describe('admin screens', () => {
     renderAt(`/projects/1?tab=${tab}`)
     expect(await screen.findByRole('heading', { name: 'Decommission 1000 servers' })).toBeTruthy()
     const expected = {
-      overview: /Behind schedule/,
+      overview: /^0 of 2 milestones done · \d+% of timeline used$/,
       team: '45 h/week',
       milestones: '1. Q1: 250 servers',
       deliverables: 'Waiting on milestone 1',
@@ -115,8 +116,8 @@ describe('admin screens', () => {
     expect(JSON.parse(calls.find((c) => c.route === 'DELETE /api/projects/1').body)).toEqual({ reason: 'deleted' })
   })
 
-  it('creating a user shows the generated ID and temporary password', async () => {
-    respond('POST /api/users', { user: { ...admin, id: 'NEW123', role: 'manager', first_name: 'New', last_name: 'Manager' }, temporary_password: 'temp-secret-1' })
+  it('creating a user shows their login email and temporary password', async () => {
+    respond('POST /api/users', { user: { ...admin, id: 'NEW123', role: 'manager', first_name: 'New', last_name: 'Manager', email: 'new@example.com' }, temporary_password: 'temp-secret-1' })
     renderAt('/users')
     fireEvent.click(await screen.findByRole('button', { name: 'New user' }))
     const dialog = await screen.findByRole('dialog')
@@ -126,13 +127,72 @@ describe('admin screens', () => {
       fireEvent.change(within(dialog).getByLabelText(new RegExp(label)), { target: { value } })
     }
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create user' }))
-    expect(await screen.findByDisplayValue('NEW123')).toBeTruthy()
+    expect(await screen.findByDisplayValue('new@example.com')).toBeTruthy()
     expect(screen.getByDisplayValue('temp-secret-1')).toBeTruthy()
     const body = JSON.parse(calls.find((c) => c.route === 'POST /api/users').body)
     expect(body).toMatchObject({ role: 'manager', first_name: 'New', email: 'new@example.com', manager_id: null, temporary_password: null })
   })
 })
 
+
+describe('progress bars and calendar', () => {
+  // Only Date is faked, so "today" is fixed while promises and timers run normally
+  const onDay = (iso) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(`${iso}T12:00:00`))
+  }
+  afterEach(() => vi.useRealTimers())
+
+  it('the projects list shows each open project\'s milestone progress', async () => {
+    onDay('2026-10-13')
+    renderAt('/projects')
+    const bar = await screen.findByRole('img', { name: /^Decommission 1000 servers: 0 of 2 milestones done/ })
+    expect(bar.getAttribute('aria-label')).toContain('Q1: 250 servers in progress, Q2: 500 servers not started')
+    expect(screen.getByText('0/2 done')).toBeTruthy()
+    // Archived projects show their dates without a progress bar
+    const archivedRow = screen.getByText('Old intranet').closest('tr')
+    expect(within(archivedRow).queryByRole('img')).toBeNull()
+    expect(within(archivedRow).getByText('Sep 1, 2026 – Aug 31, 2027')).toBeTruthy()
+    expect(calls.filter((c) => c.route === 'GET /api/milestones')).toHaveLength(1)
+  })
+
+  it('the project overview flags overdue milestones', async () => {
+    onDay('2026-12-05')
+    renderAt('/projects/1')
+    expect(await screen.findByText(/0 of 2 milestones done · \d+% of timeline used · 1 overdue/)).toBeTruthy()
+    expect(screen.getByRole('img', { name: /Q1: 250 servers overdue/ })).toBeTruthy()
+  })
+
+  it('the calendar shows milestones and highlights deadlines for the month', async () => {
+    onDay('2026-11-10')
+    renderAt('/calendar')
+    expect(await screen.findByRole('heading', { name: 'November 2026' })).toBeTruthy()
+    // The grid runs Monday Oct 26 to Sunday Dec 6
+    await waitFor(() => expect(calls.findLast((c) => c.route === 'GET /api/milestones').query).toEqual({ start: '2026-10-26', end: '2026-12-06' }))
+    expect(await screen.findByRole('button', { name: 'Decommission 1000 servers: milestone 1, Q1: 250 servers, In progress, due Nov 30, 2026' })).toBeTruthy()
+    // Q2 starts Dec 1, inside the grid's last week
+    expect(screen.getByRole('button', { name: /milestone 2, Q2: 500 servers, Not started/ })).toBeTruthy()
+    expect(screen.getByText('Due')).toBeTruthy()
+    expect(screen.getByText('Decommission 1000 servers · 1. Q1: 250 servers')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
+    expect(await screen.findByRole('heading', { name: 'December 2026' })).toBeTruthy()
+    expect(window.location.search).toBe('?month=2026-12')
+    await waitFor(() => expect(calls.findLast((c) => c.route === 'GET /api/milestones').query).toEqual({ start: '2026-11-30', end: '2027-01-03' }))
+    expect(await screen.findByText('No deadlines this month')).toBeTruthy()
+  })
+
+  it('the calendar shows project deadlines and opens the project', async () => {
+    onDay('2027-08-02')
+    renderAt('/calendar?month=2027-08')
+    const deadline = await screen.findByRole('button', { name: 'Decommission 1000 servers: project due Aug 31, 2027' })
+    expect(screen.getByText('Project due')).toBeTruthy()
+    expect(screen.getByText('Project due: Decommission 1000 servers')).toBeTruthy()
+    fireEvent.click(deadline)
+    expect(await screen.findByRole('heading', { name: 'Decommission 1000 servers' })).toBeTruthy()
+    expect(window.location.pathname).toBe('/projects/1')
+  })
+})
 
 describe('manager screens', () => {
   const manager = { ...admin, id: 'MGR001', role: 'manager', first_name: 'Mia', last_name: 'Manager', salary: '150000.00' }
@@ -248,6 +308,7 @@ describe('employee screens', () => {
     asEmployee('/')
     expect(await screen.findByRole('link', { name: 'My projects' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'My hours' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Calendar' })).toBeTruthy()
     for (const hidden of ['Employees', 'Users', 'Teams', 'Reports', 'Audit log']) {
       expect(screen.queryByRole('link', { name: hidden })).toBeNull()
     }

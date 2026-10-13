@@ -1,6 +1,6 @@
 """
-User data access. Queries never return password_hash, except
-get_credentials(), which exists only for checking a login.
+User data access. Queries never return password_hash, except the
+get_credentials* lookups, which exist only for checking passwords.
 """
 
 from models.users import SEARCH_TEXT
@@ -20,6 +20,13 @@ class UserRepository(Repository):
 
     def get(self, user_id: str) -> dict | None:
         return self._get(user_id)
+
+    def get_credentials_by_email(self, email: str) -> dict | None:
+        """Login lookup by email, ignoring case (uses the lower(email) index)."""
+        return self.db.execute(
+            "SELECT id, role, password_hash, must_change_password, is_active FROM users WHERE lower(email) = lower(%s)",
+            (email,),
+        ).fetchone()
 
     def get_credentials(self, user_id: str) -> dict | None:
         """Returns id, role, password_hash, must_change_password and is_active for a login check."""

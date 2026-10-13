@@ -65,16 +65,20 @@ def people(db):
     }
 
 
-def login(client, user_id, password=PASSWORD):
-    return client.post("/auth/token", data={"username": user_id, "password": password})
+def login(client, email, password=PASSWORD):
+    return client.post("/auth/token", data={"username": email, "password": password})
 
 
 def bearer(token):
     return {"Authorization": f"Bearer {token}"}
 
 
+def email_of(user_id):
+    return f"{user_id.lower()}@example.com"
+
+
 def token_for(client, user_id):
-    return login(client, user_id).json()["access_token"]
+    return login(client, email_of(user_id)).json()["access_token"]
 
 
 # Passwords
@@ -92,7 +96,7 @@ def test_password_hashes_are_salted_and_verifiable():
 
 
 def test_login_returns_a_bearer_token(client, people):
-    response = login(client, "emp001")  # user IDs are case-insensitive at login
+    response = login(client, "  EMP001@Example.COM ")  # emails ignore case and spaces at login
     assert response.status_code == 200
     body = response.json()
     assert body["token_type"] == "bearer"
@@ -103,23 +107,30 @@ def test_login_returns_a_bearer_token(client, people):
     assert (claims["sub"], claims["role"]) == ("EMP001", "employee")
 
 
-@pytest.mark.parametrize("user_id, password", [("EMP001", "wrong password"), ("NOBODY", PASSWORD)])
-def test_failed_logins_get_the_same_error(client, people, user_id, password):
-    response = login(client, user_id, password)
+@pytest.mark.parametrize("email, password", [("emp001@example.com", "wrong password"), ("nobody@example.com", PASSWORD)])
+def test_failed_logins_get_the_same_error(client, people, email, password):
+    response = login(client, email, password)
     assert response.status_code == 401
-    assert response.json() == {"detail": "Incorrect user ID or password"}
+    assert response.json() == {"detail": "Incorrect email or password"}
+
+
+def test_user_ids_no_longer_log_in(client, people):
+    assert login(client, "EMP001").status_code == 401
 
 
 def test_deactivated_users_cannot_log_in(client, people, db):
     UserRepository(db).update("EMP001", {"is_active": False})
-    assert login(client, "EMP001").status_code == 401
+    assert login(client, email_of("EMP001")).status_code == 401
 
 
 def test_logins_are_audited(client, people, db):
-    login(client, "EMP001")
-    login(client, "EMP001", "wrong password")
-    entries = AuditRepository(db).find(entity="users", entity_id="EMP001")
-    assert [(e["action"], e["actor_id"]) for e in entries[:2]] == [("LOGIN_FAILED", None), ("LOGIN", "EMP001")]
+    login(client, "EMP001@example.com")
+    login(client, "emp001@example.com", "wrong password")
+    audit = AuditRepository(db)
+    assert [(e["action"], e["actor_id"]) for e in audit.find(entity="users", entity_id="EMP001")][:1] == [("LOGIN", "EMP001")]
+    # Failed attempts are recorded under the email tried, as it may not belong to anyone
+    assert [(e["action"], e["actor_id"]) for e in audit.find(entity="users", entity_id="emp001@example.com")] == [
+        ("LOGIN_FAILED", None)]
 
 
 # Using the token
@@ -187,7 +198,7 @@ def test_role_guards(client, people, user_id, admins, managers):
 
 
 def test_temporary_password_must_be_changed_before_anything_else(client, people):
-    body = login(client, "EMP002").json()
+    body = login(client, email_of("EMP002")).json()
     assert body["must_change_password"] is True
     headers = bearer(body["access_token"])
     assert client.get("/anyone", headers=headers).status_code == 403
@@ -196,8 +207,8 @@ def test_temporary_password_must_be_changed_before_anything_else(client, people)
     change = {"current_password": PASSWORD, "new_password": "a brand new password"}
     assert client.post("/auth/change-password", json=change, headers=headers).status_code == 204
     assert client.get("/anyone", headers=headers).status_code == 200
-    assert login(client, "EMP002").status_code == 401
-    assert login(client, "EMP002", "a brand new password").json()["must_change_password"] is False
+    assert login(client, email_of("EMP002")).status_code == 401
+    assert login(client, email_of("EMP002"), "a brand new password").json()["must_change_password"] is False
 
 
 def test_change_password_checks_the_current_password(client, people):

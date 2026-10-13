@@ -14,6 +14,8 @@ Milestones (deliverables), their tasks, and the employees assigned to them.
   project archives it.
 """
 
+from datetime import date
+
 from models.milestones import (
     Milestone, MilestoneAssignment, MilestoneCreate, MilestoneTask, MilestoneTaskCreate, MilestoneTaskUpdate,
     MilestoneUpdate,
@@ -54,6 +56,13 @@ class MilestoneService:
     def list_milestones(self, actor: dict, project_id: int) -> list[Milestone]:
         self.project_service.get_visible(actor, project_id)
         return [Milestone.model_validate(row) for row in self.milestones.for_project(project_id)]
+
+    def list_visible_milestones(self, actor: dict, start: date | None = None, end: date | None = None) -> list[Milestone]:
+        """Milestones of every open project the actor can see, overlapping the date range (for the calendar)."""
+        if start and end and end < start:
+            raise InvalidRequestError("The end date must be on or after the start date")
+        project_ids = [p.id for p in self.project_service.list_projects(actor, archived=False)]
+        return [Milestone.model_validate(row) for row in self.milestones.in_projects(project_ids, start, end)]
 
     def get_milestone(self, actor: dict, milestone_id: int) -> Milestone:
         milestone, _ = self._visible_milestone(actor, milestone_id)

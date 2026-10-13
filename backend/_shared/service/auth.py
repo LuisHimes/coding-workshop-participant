@@ -21,21 +21,23 @@ class AuthService:
         self.users = users
         self.audit = audit
 
-    def login(self, user_id: str, password: str) -> dict:
+    def login(self, email: str, password: str) -> dict:
         """
-        Checks credentials and returns an access token. Every attempt is audited.
-        Unknown users, wrong passwords and deactivated accounts get the same
-        error, so a failed login does not reveal which user IDs exist.
+        Checks an email and password and returns an access token. Every attempt
+        is audited. Unknown emails, wrong passwords and deactivated accounts get
+        the same error, so a failed login does not reveal which emails exist.
         """
-        user_id = user_id.strip().upper()
-        credentials = self.users.get_credentials(user_id)
+        email = email.strip().lower()
+        credentials = self.users.get_credentials_by_email(email)
         password_ok = verify_password(password, credentials["password_hash"] if credentials else DUMMY_HASH)
 
         if not credentials or not password_ok or not credentials["is_active"]:
             self.audit.set_actor(None)
-            self.audit.record_event("LOGIN_FAILED", "users", user_id)
-            raise AuthError("Incorrect user ID or password")
+            # The attempted email is recorded, since it may not belong to anyone
+            self.audit.record_event("LOGIN_FAILED", "users", email)
+            raise AuthError("Incorrect email or password")
 
+        user_id = credentials["id"]
         self.audit.set_actor(user_id)
         self.audit.record_event("LOGIN", "users", user_id)
         token, expires_in = create_access_token(user_id, credentials["role"])

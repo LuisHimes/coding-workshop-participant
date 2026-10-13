@@ -393,6 +393,32 @@ def test_employees_have_one_active_milestone(svc, org):
     assert svc.milestones.get_active_milestone(org.ann).id == elsewhere.id
 
 
+def test_calendar_lists_visible_milestones_in_a_date_range(svc, org):
+    other = svc.projects.create_project(org.admin, ProjectCreate(
+        name="Other", manager_id=org.max["id"], start_date=TODAY, projected_end_date=TODAY + timedelta(days=90),
+        allocated_hours=1))
+    first, second = add_milestone(svc, org, 1), add_milestone(svc, org, 2)
+    theirs = svc.milestones.create_milestone(org.max, other.id, MilestoneCreate(
+        sequence=1, title="Theirs", start_date=TODAY, end_date=TODAY + timedelta(days=5)))
+    add_member(svc, org, org.ann)
+
+    def ids(actor, **dates):
+        return [m.id for m in svc.milestones.list_visible_milestones(actor, **dates)]
+
+    assert set(ids(org.admin)) == {first.id, second.id, theirs.id}
+    assert ids(org.mia) == [first.id, second.id]
+    assert ids(org.ann) == [first.id, second.id]
+    assert ids(org.cal) == []
+    # first runs days 1-20 and second days 2-40: only second overlaps days 25-30
+    assert ids(org.mia, start=TODAY + timedelta(days=25), end=TODAY + timedelta(days=30)) == [second.id]
+    assert ids(org.mia, end=TODAY) == []
+    with pytest.raises(InvalidRequestError):
+        svc.milestones.list_visible_milestones(org.mia, start=TODAY, end=TODAY - timedelta(days=1))
+    # Archived projects drop off the calendar, even for admins
+    svc.projects.archive_project(org.admin, other.id, "deleted")
+    assert theirs.id not in ids(org.admin)
+
+
 def test_milestone_rules_for_managers(svc, org):
     milestone = add_milestone(svc, org, 1)
     with pytest.raises(InvalidRequestError, match="Add the employee to the project"):

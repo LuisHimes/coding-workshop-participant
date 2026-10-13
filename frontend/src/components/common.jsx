@@ -104,7 +104,7 @@ const ROLE_COLORS = { admin: 'secondary', manager: 'primary', employee: 'default
 
 export function ProjectStatusChip({ project }) {
   return (
-    <Stack direction="row" spacing={0.5}>
+    <Stack direction="row" useFlexGap sx={{ gap: 0.5, flexWrap: 'wrap' }}>
       <Chip size="small" label={PROJECT_STATUS_LABELS[project.status]} color={PROJECT_STATUS_COLORS[project.status]} />
       {project.archived && (
         <Chip size="small" variant="outlined" label={project.archive_reason === 'deleted' ? 'Archived (deleted)' : 'Archived'} />

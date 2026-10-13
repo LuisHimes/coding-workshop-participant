@@ -7,7 +7,7 @@ import { ErrorAlert } from '../components/common'
 export default function LoginPage() {
   const { login, notice } = useAuth()
   const navigate = useNavigate()
-  const [userId, setUserId] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -17,7 +17,7 @@ export default function LoginPage() {
     setBusy(true)
     setError(null)
     try {
-      await login(userId.trim(), password)
+      await login(email.trim(), password)
       navigate('/', { replace: true })
     } catch (err) {
       setError(err)
@@ -31,20 +31,20 @@ export default function LoginPage() {
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h5" component="h1">Project Tracker</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>
-            Log in with your 6-character user ID.
+            Log in with your work email.
           </Typography>
           {notice && <Alert severity="info" sx={{ mb: 2 }}>{notice}</Alert>}
           <ErrorAlert error={error} />
           <Stack component="form" spacing={2} onSubmit={submit}>
             <TextField
-              id="user-id"
-              label="User ID"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value.toUpperCase())}
+              id="email"
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               autoComplete="username"
               autoFocus
               required
-              slotProps={{ htmlInput: { maxLength: 6, style: { letterSpacing: '0.1em' } } }}
             />
             <TextField
               id="password"

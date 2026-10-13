@@ -3,6 +3,8 @@ Milestone, task and assignment routes. Milestones are created under
 /projects/{project_id}/milestones. Permissions are checked in MilestoneService.
 """
 
+from datetime import date
+
 from fastapi import APIRouter, Response, status
 
 from dependencies import CurrentUser, MilestoneServiceDep
@@ -12,6 +14,13 @@ from models.milestones import (
 )
 
 router = APIRouter(tags=["milestones"])
+
+
+@router.get("/milestones")
+def list_milestones(user: CurrentUser, milestones: MilestoneServiceDep,
+                    start: date | None = None, end: date | None = None) -> list[Milestone]:
+    """Milestones of every open project you can see that overlap start..end (both optional)."""
+    return milestones.list_visible_milestones(user, start, end)
 
 
 # Declared before /milestones/{milestone_id} so "active" isn't read as an ID

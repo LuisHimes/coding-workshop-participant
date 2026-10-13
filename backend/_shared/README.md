@@ -137,6 +137,7 @@ Every route needs a bearer token (see [Logging in](#logging-in)) except the heal
 | GET, PATCH, DELETE    | `/teams/{id}`                                     | View, rename or delete a team                                      |
 | GET, POST             | `/teams/{id}/members`                             | Members; add one of the manager's direct reports                   |
 | DELETE                | `/teams/{id}/members/{user_id}`                   | Remove a member                                                    |
+| GET                   | `/milestones?start=&end=`                         | Milestones of every open project you can see in a date range (calendar) |
 | GET                   | `/milestones/active`                              | Your active milestone                                              |
 | GET, PATCH, DELETE    | `/milestones/{id}`                                | View; managers edit, start and complete; delete if not started     |
 | GET, POST             | `/milestones/{id}/tasks`                          | Tasks; managers add them                                           |
@@ -159,8 +160,8 @@ Every route needs a bearer token (see [Logging in](#logging-in)) except the heal
 The API uses the OAuth2 password flow with JWT bearer tokens:
 
 ```sh
-# 1. Log in with the 6-character user ID
-curl -X POST http://localhost:3001/api/auth/token -d "username=ADMIN1" -d "password=..."
+# 1. Log in with your email (OAuth2 calls the field "username"; it ignores case)
+curl -X POST http://localhost:3001/api/auth/token -d "username=admin@example.com" -d "password=..."
 # -> {"access_token": "eyJ...", "token_type": "bearer", "expires_in": 3600, "must_change_password": true}
 
 # 2. Send the token on every request
@@ -172,7 +173,7 @@ curl -X POST http://localhost:3001/api/auth/change-password -H "Authorization: B
 ```
 
 - Until a temporary password is changed, every route except `/auth/me` and `/auth/change-password` returns 403.
-- Failed logins return the same error whether the user ID or the password is wrong, and every attempt is written to the audit log (`LOGIN`, `LOGIN_FAILED`).
+- Failed logins return the same error whether the email or the password is wrong, and every attempt is written to the audit log (`LOGIN`, `LOGIN_FAILED`).
 - The user is reloaded on every request, so deactivating someone ends their session immediately.
 - Passwords are hashed with scrypt from Python's standard library.
 
@@ -310,7 +311,7 @@ The schema is created automatically on the first database connection; see [Migra
 
 | Table                   | Purpose                                                                           |
 | ----------------------- | --------------------------------------------------------------------------------- |
-| `users`                 | 6-character ID (also the username), role, job title, salary, temporary password flag |
+| `users`                 | 6-character system-generated ID, email (used to log in), role, job title, salary, temporary password flag |
 | `projects`              | Manager, dates, allocated hours, budget, status, archive fields                   |
 | `project_members`       | Employees on a project and their planned hours per week                           |
 | `milestones`            | Ordered checkpoints within a project, with their own dates                        |

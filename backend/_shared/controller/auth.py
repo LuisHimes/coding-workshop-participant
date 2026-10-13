@@ -1,8 +1,9 @@
 """
 Login endpoints (OAuth2 password flow with JWT bearer tokens).
 
-1. POST /auth/token with form fields username (the 6-character user ID) and
-   password returns an access token.
+1. POST /auth/token with form fields username (the user's email address; the
+   OAuth2 password flow names this field "username") and password returns an
+   access token.
 2. Send it on every request: Authorization: Bearer <access_token>
 3. Users with a temporary password must call POST /auth/change-password
    before any other route will accept their token.
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/token", response_model=Token)
 def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], auth: AuthServiceDep):
+    """Log in with your email address (in the username field) and password."""
     try:
         return auth.login(form.username, form.password)
     except AuthError as e:

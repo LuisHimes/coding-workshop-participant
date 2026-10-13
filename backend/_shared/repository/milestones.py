@@ -26,6 +26,17 @@ class MilestoneRepository(Repository):
             f"SELECT {self._select()} FROM milestones WHERE project_id = %s ORDER BY sequence", (project_id,)
         ).fetchall()
 
+    def in_projects(self, project_ids: list[int], start=None, end=None) -> list[dict]:
+        """Milestones of these projects that overlap the date range (either end may be open)."""
+        if not project_ids:
+            return []
+        return self.db.execute(
+            f"SELECT {self._select()} FROM milestones WHERE project_id = ANY(%s) "
+            f"AND (%s::date IS NULL OR end_date >= %s) AND (%s::date IS NULL OR start_date <= %s) "
+            f"ORDER BY start_date, project_id, sequence",
+            (project_ids, start, start, end, end),
+        ).fetchall()
+
     def update(self, milestone_id: int, values: dict) -> dict | None:
         return self._update(milestone_id, values)
 

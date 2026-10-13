@@ -154,7 +154,7 @@ def test_request_logs_name_the_logged_in_user(db, caplog):
     app.dependency_overrides[get_db] = lambda: db
     try:
         client = TestClient(app)
-        token = client.post("/auth/token", data={"username": "ADMIN9", "password": "a long password"}).json()
+        token = client.post("/auth/token", data={"username": "ada@example.com", "password": "a long password"}).json()
         with caplog.at_level(logging.INFO, logger="middleware"):
             client.get("/api/auth/me", headers={"Authorization": f"Bearer {token['access_token']}"})
     finally:

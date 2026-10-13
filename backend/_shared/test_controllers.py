@@ -35,11 +35,11 @@ def admin(db, client):
         "id": "ADMIN9", "role": "admin", "first_name": "Ada", "last_name": "Admin", "email": "ada@example.com",
         "job_title": "Administrator", "password_hash": hash_password(PASSWORD), "must_change_password": False,
     })
-    return log_in(client, "ADMIN9")
+    return log_in(client, "ada@example.com")
 
 
-def log_in(client, user_id, password=PASSWORD):
-    response = client.post("/auth/token", data={"username": user_id, "password": password})
+def log_in(client, email, password=PASSWORD):
+    response = client.post("/auth/token", data={"username": email, "password": password})
     assert response.status_code == 200, response.text
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
@@ -51,7 +51,7 @@ def new_user(client, admin, role, first_name, manager_id=None):
     created = client.post("/users", json=body, headers=admin)
     assert created.status_code == 201, created.text
     user_id, temporary = created.json()["user"]["id"], created.json()["temporary_password"]
-    headers = log_in(client, user_id, temporary)
+    headers = log_in(client, body["email"], temporary)
     change = {"current_password": temporary, "new_password": PASSWORD}
     assert client.post("/auth/change-password", json=change, headers=headers).status_code == 204
     return user_id, headers
@@ -88,6 +88,10 @@ def test_full_project_lifecycle(client, admin):
 
     # The employee sees their work, ticks off the task and logs hours
     assert check(client.get("/milestones/active", headers=as_ann))["id"] == q1["id"]
+    assert [m["id"] for m in check(client.get("/milestones", params={"start": str(date.today())}, headers=as_ann))] \
+        == [m["id"] for m in check(client.get(f"/projects/{project['id']}/milestones", headers=as_ann))
+            if m["end_date"] >= str(date.today())]
+    assert client.get("/milestones", params={"start": "2026-02-01", "end": "2026-01-01"}, headers=as_ann).status_code == 400
     assert check(client.patch(f"/milestones/tasks/{task['id']}", headers=as_ann, json={"is_done": True}))["done_by"] == ann
     logged = check(client.post("/time-entries", headers=as_ann, json={
         "project_id": pid, "milestone_id": q1["id"], "work_date": str(TODAY), "hours": "8"}), 201)
@@ -138,7 +142,7 @@ def test_every_route_requires_login(client, method, path):
 def test_temporary_passwords_must_be_changed_first(client, admin):
     created = check(client.post("/users", headers=admin, json={
         "role": "manager", "first_name": "New", "last_name": "Hire", "email": "new@example.com", "job_title": "Manager"}), 201)
-    headers = log_in(client, created["user"]["id"], created["temporary_password"])
+    headers = log_in(client, created["user"]["email"], created["temporary_password"])
     check(client.get("/projects", headers=headers), 403)
     check(client.get("/auth/me", headers=headers))
 

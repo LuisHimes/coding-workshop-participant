@@ -6,6 +6,7 @@ import {
 } from '@mui/material'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import FolderIcon from '@mui/icons-material/Folder'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import PeopleIcon from '@mui/icons-material/People'
 import GroupsIcon from '@mui/icons-material/Groups'
 import AssessmentIcon from '@mui/icons-material/Assessment'
@@ -20,6 +21,7 @@ const DRAWER_WIDTH = 232
 const ADMIN_NAV = [
   { to: '/', label: 'Dashboard', icon: <DashboardIcon />, end: true },
   { to: '/projects', label: 'Projects', icon: <FolderIcon /> },
+  { to: '/calendar', label: 'Calendar', icon: <CalendarMonthIcon /> },
   { to: '/users', label: 'Users', icon: <PeopleIcon /> },
   { to: '/teams', label: 'Teams', icon: <GroupsIcon /> },
   { to: '/reports', label: 'Reports', icon: <AssessmentIcon /> },
@@ -31,10 +33,11 @@ const ADMIN_NAV = [
 // Managers see their own projects, team and reports; the audit log is admin-only
 const MANAGER_NAV = ADMIN_NAV.filter((item) => item.to !== '/audit').map((item) =>
   item.to === '/users' ? { ...item, label: 'Employees' } : item)
-// Employees see their own work: home, their projects, their hours and the message board
+// Employees see their own work: home, their projects and calendar, their hours and the message board
 const EMPLOYEE_NAV = [
   { ...ADMIN_NAV[0], label: 'Home' },
   { to: '/projects', label: 'My projects', icon: <FolderIcon /> },
+  { to: '/calendar', label: 'Calendar', icon: <CalendarMonthIcon /> },
   { to: '/time-entries', label: 'My hours', icon: <AccessTimeIcon /> },
   { to: '/messages', label: 'Message board', icon: <ForumIcon /> },
 ]

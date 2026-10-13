@@ -52,10 +52,12 @@ function CredentialsDialog({ credentials, title, onClose }) {
         {credentials && (
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Typography variant="body2">
-              Give these to {fullName(credentials.user)}. They'll be asked to choose a permanent password when they log in.
+              Give these to {fullName(credentials.user)}. They log in with their email and will be asked to choose a
+              permanent password.
             </Typography>
-            <CopyValue label="User ID" value={credentials.user.id} />
+            <CopyValue label="Email" value={credentials.user.email} />
             <CopyValue label="Temporary password" value={credentials.temporary_password} />
+            <Typography variant="caption" color="text.secondary">User ID {credentials.user.id}, for reference</Typography>
             <Alert severity="warning">The temporary password isn't shown again. Reset it if it's lost.</Alert>
           </Stack>
         )}
@@ -210,7 +212,7 @@ export default function UsersPage() {
           changed()
           setCredentials(created)
         }}>
-        <Typography variant="body2" color="text.secondary">The system generates the 6-character user ID.</Typography>
+        <Typography variant="body2" color="text.secondary">They'll log in with this email. The system generates a 6-character user ID for reference.</Typography>
         <UserFields form={form} setForm={setForm} managers={managers} creating />
       </FormDialog>
 

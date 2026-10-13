@@ -11,8 +11,9 @@ It covers every admin, manager and employee feature. Each screen shows only what
 | Screen          | What admins can do                                                                                   |
 | --------------- | ---------------------------------------------------------------------------------------------------- |
 | Dashboard       | Open, at-risk and off-track projects, over-allocated employees, labor cost against budget, project status table, message board |
-| Projects        | Search and filter (status, open or archived); create projects with a manager, dates, hours and budget |
-| Project page    | Edit everything including budget and manager; delete (archive) with a reason; unarchive; budget estimate with "Use as budget"; health and deadline risk |
+| Projects        | Search and filter (status, open or archived); each open project's progress bar; create projects with a manager, dates, hours and budget |
+| Calendar        | Month view of milestones as bars across their dates, colored by state (overdue in red), with milestone and project deadlines highlighted; filter by project; a list of the month's deadlines |
+| Project page    | Progress bar (milestones placed on the timeline by state, with today marked); edit everything including budget and manager; delete (archive) with a reason; unarchive; budget estimate with "Use as budget"; health and deadline risk |
 | · Team          | Add employees with planned hours (warns above 40 h/week), add a whole team, change hours, remove     |
 | · Milestones    | Add, edit, start, complete, reopen and delete milestones; add, tick off, rename and delete tasks; assign members and mark their part finished |
 | · Deliverables  | The dependency chain: order, what each milestone waits on, progress and assignees                    |
@@ -33,7 +34,8 @@ Managers use the same screens, limited to their own work:
 | Screen        | What managers can do                                                                                     |
 | ------------- | -------------------------------------------------------------------------------------------------------- |
 | Dashboard     | Their open projects at a glance, plus the message board                                                  |
-| Projects      | Their own open projects; edit details and status (not budget or manager); completing a project archives it |
+| Projects      | Their own open projects with progress bars; edit details and status (not budget or manager); completing a project archives it |
+| Calendar      | Milestones and deadlines of their open projects                                                          |
 | Project page  | Team (add employees or one of their teams), milestones, tasks, assignments, deliverables, hours (read-only), message board |
 | Employees     | Every employee, with salaries, read-only                                                                 |
 | Teams         | Create teams of their direct reports; manage members; rename; delete                                     |
@@ -48,7 +50,8 @@ Managers don't see the audit log, can't create, delete or archive projects, and 
 | Screen        | What employees can do                                                                                  |
 | ------------- | ------------------------------------------------------------------------------------------------------ |
 | Home          | Their current milestone with its tasks to tick off, "Mark my part finished", this week's hours against 40, their projects, the message board |
-| My projects   | The open projects they're on, without budgets or costs                                                  |
+| My projects   | The open projects they're on with progress bars, without budgets or costs                               |
+| Calendar      | Milestones and deadlines of their projects                                                              |
 | Project page  | Details, teammates, milestones (tick off tasks and mark their part finished on milestones they're assigned to), deliverables, their own hours with "Log hours", the message board |
 | My hours      | Log, correct and delete their own hours; each save shows the week's total, flagged above 40              |
 | Message board | Read announcements and their projects' posts; post to their projects; delete their own posts           |
@@ -75,6 +78,7 @@ frontend/
     ├── hooks/                # useApiData (loading and errors), useDebounced
     ├── pages/                # One component per screen
     ├── utils/format.js       # Money, hours, dates, labels
+    ├── utils/milestones.js   # Milestone states (incl. overdue) and calendar-day helpers
     ├── test/                 # Fake API and test setup
     └── App.test.jsx          # Renders every screen against the fake API
 ```
@@ -89,7 +93,7 @@ frontend/
 ./bin/start-dev.sh              # LocalStack, backend Lambdas, proxy on :3001 and this app on :3000
 ```
 
-Open `http://localhost:3000` and log in as `ADMIN1` with `INITIAL_ADMIN_PASSWORD` from `backend/_shared/.env.development`. You'll be asked to choose a permanent password first.
+Open `http://localhost:3000` and log in with `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` from `backend/_shared/.env.development`. You'll be asked to choose a permanent password first.
 
 To run only this app against an already running backend: `npm run dev`.
 

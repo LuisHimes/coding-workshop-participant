@@ -6,13 +6,14 @@ import {
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
-import { projects as projectsApi } from '../api/endpoints'
+import { milestones as milestonesApi, projects as projectsApi } from '../api/endpoints'
 import { useRole } from '../auth/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
 import { useDirectory } from '../components/Directory'
 import { EmptyState, ErrorAlert, Loading, PageHeader, ProjectStatusChip } from '../components/common'
 import ProjectFormDialog from '../components/ProjectFormDialog'
+import ProjectProgressBar from '../components/ProjectProgressBar'
 import { PROJECT_STATUS_LABELS, day, hours, money } from '../utils/format'
 
 const ARCHIVED_FILTER = { all: undefined, open: false, archived: true }
@@ -30,6 +31,9 @@ export default function ProjectsPage() {
     () => projectsApi.list({ q: search || undefined, status: status || undefined, archived: ARCHIVED_FILTER[archived] }),
     [search, status, archived],
   )
+  // One call for every open project's milestones, grouped for the progress bars
+  const milestones = useApiData(() => milestonesApi.list({}), [])
+  const milestonesByProject = Map.groupBy(milestones.data || [], (m) => m.project_id)
 
   return (
     <>
@@ -74,9 +78,9 @@ export default function ProjectsPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
-                  <TableCell>Status</TableCell>
+                  <TableCell sx={{ width: 140 }}>Status</TableCell>
+                  <TableCell sx={{ width: 220 }}>Progress and dates</TableCell>
                   <TableCell>Manager</TableCell>
-                  <TableCell>Dates</TableCell>
                   <TableCell align="right">Allocated</TableCell>
                   {!isEmployee && <TableCell align="right">Budget</TableCell>}
                 </TableRow>
@@ -87,14 +91,21 @@ export default function ProjectsPage() {
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>{project.name}</Typography>
                       {project.description && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 360 }} noWrap>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 280 }} noWrap>
                           {project.description}
                         </Typography>
                       )}
                     </TableCell>
                     <TableCell><ProjectStatusChip project={project} /></TableCell>
-                    <TableCell>{directory.userName(project.manager_id)}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{day(project.start_date)} – {day(project.projected_end_date)}</TableCell>
+                    <TableCell>
+                      {!project.archived && milestones.data && (
+                        <ProjectProgressBar project={project} milestones={milestonesByProject.get(project.id) || []} compact />
+                      )}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>
+                        {day(project.start_date)} – {day(project.projected_end_date)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{directory.userName(project.manager_id)}</TableCell>
                     <TableCell align="right">{hours(project.allocated_hours)}</TableCell>
                     {!isEmployee && <TableCell align="right">{money(project.budget)}</TableCell>}
                   </TableRow>

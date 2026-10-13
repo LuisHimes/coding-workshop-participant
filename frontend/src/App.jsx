@@ -20,6 +20,7 @@ import MessagesPage from './pages/MessagesPage'
 import AuditPage from './pages/AuditPage'
 import ProfilePage from './pages/ProfilePage'
 import EmployeeHomePage from './pages/EmployeeHomePage'
+import CalendarPage from './pages/CalendarPage'
 
 /** Single-page app: React Router swaps screens in the browser; the server always serves index.html. */
 function AppRoutes() {
@@ -50,6 +51,7 @@ function AppRoutes() {
             <Route path="/" element={<EmployeeHomePage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/time-entries" element={<TimeEntriesPage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
@@ -66,6 +68,7 @@ function AppRoutes() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:teamId" element={<TeamDetailPage />} />

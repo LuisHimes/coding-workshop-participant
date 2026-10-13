@@ -16,6 +16,7 @@ import {
   ConfirmDialog, ErrorAlert, Field, Loading, PageHeader, ProjectStatusChip, RiskChip,
 } from '../components/common'
 import ProjectFormDialog from '../components/ProjectFormDialog'
+import ProjectProgressBar from '../components/ProjectProgressBar'
 import MessageBoard from '../components/MessageBoard'
 import TimeEntriesTable from '../components/TimeEntriesTable'
 import LogHoursDialog from '../components/LogHoursDialog'
@@ -36,6 +37,7 @@ function Overview({ project, onChanged }) {
     () => (isEmployee ? Promise.resolve(null) : reports.projects(true).then((all) => all.find((p) => p.project_id === project.id) ?? null)),
     [project.id, project.updated_at],
   )
+  const milestones = useApiData(() => projectsApi.milestones.list(project.id), [project.id, project.updated_at])
   const [estimate, setEstimate] = useState(null)
   const [estimateError, setEstimateError] = useState(null)
   const h = health.data
@@ -51,6 +53,13 @@ function Overview({ project, onChanged }) {
 
   return (
     <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: '1fr 1fr', alignItems: 'start' }}>
+      <Card sx={{ gridColumn: '1 / -1' }}>
+        <CardContent>
+          <Typography variant="subtitle1" sx={{ mb: 2 }}>Progress</Typography>
+          <ErrorAlert error={milestones.error} onRetry={milestones.reload} />
+          {milestones.data && <ProjectProgressBar project={project} milestones={milestones.data} />}
+        </CardContent>
+      </Card>
       <Card>
         <CardContent>
           <Typography variant="subtitle1" sx={{ mb: 2 }}>Details</Typography>

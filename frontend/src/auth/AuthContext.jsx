@@ -65,8 +65,8 @@ export function AuthProvider({ children }) {
   }, [logout])
 
   const login = useCallback(
-    async (userId, password) => {
-      const result = await auth.login(userId, password)
+    async (email, password) => {
+      const result = await auth.login(email, password)
       setAccessToken(result.access_token)
       storeToken(result.access_token)
       setNotice(null)
