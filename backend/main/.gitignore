@@ -1,0 +1,13 @@
+# ./bin/start-dev.sh pip-installs dependencies into this folder for hot reload.
+# Ignore every folder except the app's packages; typing_extensions is the only
+# dependency installed as a single file.
+/*/
+!/controller/
+!/migrations/
+!/models/
+!/repository/
+!/service/
+/bin/
+/typing_extensions.py
+/.pip_installed
+__pycache__/

@@ -111,6 +111,11 @@ locals {
     MONGO_NAME    = data.aws_caller_identity.this.id == "000000000000" ? "mongo" : try(one(aws_docdb_cluster.this.*.database_name), "")
     MONGO_USER    = data.aws_caller_identity.this.id == "000000000000" ? "" : try(one(aws_docdb_cluster.this.*.master_username), "")
     MONGO_PASS    = data.aws_caller_identity.this.id == "000000000000" ? "" : try(one(aws_docdb_cluster.this.*.master_password), "")
+
+    # Backend login: token signing secret and the first admin's temporary password.
+    # Empty values are not set, so locally the backend's .env.development applies.
+    JWT_SECRET             = data.aws_caller_identity.this.id == "000000000000" ? "" : random_password.jwt_secret.result
+    INITIAL_ADMIN_PASSWORD = data.aws_caller_identity.this.id == "000000000000" ? "" : random_password.initial_admin.result
   }
   lambda_role_arn = format(
     "arn:%s:iam::%s:role/%s-lambda-%s-%s",
