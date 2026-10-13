@@ -1,3 +1,10 @@
+# Copies backend/_shared into each Python feature folder before packaging.
+# A data source runs during plan, so packages are hashed with current code.
+data "external" "python_shared_sync" {
+  count   = fileexists(format("%s/../backend/_shared/sync.py", path.module)) ? 1 : 0
+  program = ["python3", abspath(format("%s/../backend/_shared/sync.py", path.module)), "--json"]
+}
+
 module "lambda" {
   for_each = local.function_names
   source   = "terraform-aws-modules/lambda/aws"
@@ -57,7 +64,7 @@ module "lambda" {
 
   tags = local.app_tags
 
-  depends_on = [null_resource.java_build]
+  depends_on = [null_resource.java_build, data.external.python_shared_sync]
 }
 
 resource "aws_sqs_queue" "this" {

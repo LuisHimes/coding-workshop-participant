@@ -1,35 +1,97 @@
-import { useState } from 'react'
-import reactLogo from '/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { CssBaseline, ThemeProvider } from '@mui/material'
+import { theme } from './theme'
+import { AuthProvider, useAuth } from './auth/AuthContext'
+import { NotificationProvider } from './components/Notifications'
+import { DirectoryProvider } from './components/Directory'
+import { Loading } from './components/common'
+import Layout from './components/Layout'
+import LoginPage from './pages/LoginPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
+import DashboardPage from './pages/DashboardPage'
+import ProjectsPage from './pages/ProjectsPage'
+import ProjectDetailPage from './pages/ProjectDetailPage'
+import UsersPage from './pages/UsersPage'
+import TeamsPage from './pages/TeamsPage'
+import TeamDetailPage from './pages/TeamDetailPage'
+import ReportsPage from './pages/ReportsPage'
+import TimeEntriesPage from './pages/TimeEntriesPage'
+import MessagesPage from './pages/MessagesPage'
+import AuditPage from './pages/AuditPage'
+import ProfilePage from './pages/ProfilePage'
+import EmployeeHomePage from './pages/EmployeeHomePage'
 
-function App() {
-  const [count, setCount] = useState(0)
+/** Single-page app: React Router swaps screens in the browser; the server always serves index.html. */
+function AppRoutes() {
+  const { user, status } = useAuth()
 
+  if (status === 'checking') return <Loading label="Restoring your session…" />
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    )
+  }
+  if (user.must_change_password) {
+    return (
+      <Routes>
+        <Route path="/change-password" element={<ChangePasswordPage />} />
+        <Route path="*" element={<Navigate to="/change-password" replace />} />
+      </Routes>
+    )
+  }
+  if (user.role === 'employee') {
+    return (
+      <DirectoryProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<EmployeeHomePage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/time-entries" element={<TimeEntriesPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </DirectoryProvider>
+    )
+  }
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <DirectoryProvider>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/teams/:teamId" element={<TeamDetailPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/time-entries" element={<TimeEntriesPage />} />
+          <Route path="/messages" element={<MessagesPage />} />
+          {user.role === 'admin' && <Route path="/audit" element={<AuditPage />} />}
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </DirectoryProvider>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <NotificationProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </NotificationProvider>
+    </ThemeProvider>
+  )
+}

@@ -1,0 +1,6 @@
+# Everything else here is copied from backend/_shared by sync.py, or installed
+# by ./bin/start-dev.sh for hot reload
+/*
+!/.gitignore
+!/function.py
+!/requirements.txt
