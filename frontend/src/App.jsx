@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ColorModeProvider } from './components/ColorMode'
 import { AuthProvider, useAuth } from './auth/AuthContext'
@@ -6,22 +6,41 @@ import { NotificationProvider } from './components/Notifications'
 import { DirectoryProvider } from './components/Directory'
 import { Loading } from './components/common'
 import Layout from './components/Layout'
+import { prefetchWhenIdle } from './utils/prefetch'
 import LoginPage from './pages/LoginPage'
-// Each screen downloads the first time it's opened; the login page is part of the first download
-const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
-const DashboardPage = lazy(() => import('./pages/DashboardPage'))
-const ProjectsPage = lazy(() => import('./pages/ProjectsPage'))
-const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'))
-const UsersPage = lazy(() => import('./pages/UsersPage'))
-const TeamsPage = lazy(() => import('./pages/TeamsPage'))
-const TeamDetailPage = lazy(() => import('./pages/TeamDetailPage'))
-const MilestoneTemplatesPage = lazy(() => import('./pages/MilestoneTemplatesPage'))
-const ReportsPage = lazy(() => import('./pages/ReportsPage'))
-const TimeEntriesPage = lazy(() => import('./pages/TimeEntriesPage'))
-const AuditPage = lazy(() => import('./pages/AuditPage'))
-const ProfilePage = lazy(() => import('./pages/ProfilePage'))
-const EmployeeHomePage = lazy(() => import('./pages/EmployeeHomePage'))
-const CalendarPage = lazy(() => import('./pages/CalendarPage'))
+
+// Each screen is its own download; the login page is part of the first one. Once the page is idle, the
+// rest are fetched in the background (most likely next screens first), so opening them is instant.
+const PAGES = {
+  DashboardPage: () => import('./pages/DashboardPage'),
+  EmployeeHomePage: () => import('./pages/EmployeeHomePage'),
+  ProjectsPage: () => import('./pages/ProjectsPage'),
+  ProjectDetailPage: () => import('./pages/ProjectDetailPage'),
+  CalendarPage: () => import('./pages/CalendarPage'),
+  TimeEntriesPage: () => import('./pages/TimeEntriesPage'),
+  ReportsPage: () => import('./pages/ReportsPage'),
+  UsersPage: () => import('./pages/UsersPage'),
+  TeamsPage: () => import('./pages/TeamsPage'),
+  TeamDetailPage: () => import('./pages/TeamDetailPage'),
+  MilestoneTemplatesPage: () => import('./pages/MilestoneTemplatesPage'),
+  ProfilePage: () => import('./pages/ProfilePage'),
+  AuditPage: () => import('./pages/AuditPage'),
+  ChangePasswordPage: () => import('./pages/ChangePasswordPage'),
+}
+const DashboardPage = lazy(PAGES.DashboardPage)
+const EmployeeHomePage = lazy(PAGES.EmployeeHomePage)
+const ProjectsPage = lazy(PAGES.ProjectsPage)
+const ProjectDetailPage = lazy(PAGES.ProjectDetailPage)
+const CalendarPage = lazy(PAGES.CalendarPage)
+const TimeEntriesPage = lazy(PAGES.TimeEntriesPage)
+const ReportsPage = lazy(PAGES.ReportsPage)
+const UsersPage = lazy(PAGES.UsersPage)
+const TeamsPage = lazy(PAGES.TeamsPage)
+const TeamDetailPage = lazy(PAGES.TeamDetailPage)
+const MilestoneTemplatesPage = lazy(PAGES.MilestoneTemplatesPage)
+const ProfilePage = lazy(PAGES.ProfilePage)
+const AuditPage = lazy(PAGES.AuditPage)
+const ChangePasswordPage = lazy(PAGES.ChangePasswordPage)
 
 /** Single-page app: React Router swaps screens in the browser; the server always serves index.html. */
 function AppRoutes() {
@@ -85,6 +104,8 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useEffect(() => { prefetchWhenIdle(Object.values(PAGES)) }, [])
+
   return (
     <ColorModeProvider>
       <NotificationProvider>
