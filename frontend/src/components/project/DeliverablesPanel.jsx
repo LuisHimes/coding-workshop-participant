@@ -13,6 +13,9 @@ export default function DeliverablesPanel({ project }) {
   if (loading && !data) return <Loading />
   return (
     <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        What the project delivers, milestone by milestone: what each one waits on, how many of its tasks are done, and who is working on it.
+      </Typography>
       <ErrorAlert error={error} onRetry={reload} />
       {data?.length === 0 && <EmptyState title="No deliverables yet">Add milestones to see the dependency chain.</EmptyState>}
       <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0 }}>

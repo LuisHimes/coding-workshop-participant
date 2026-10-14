@@ -70,7 +70,7 @@ afterEach(() => vi.useRealTimers())
 describe('message board', () => {
   it('admins post announcements to everyone by default', async () => {
     respond('POST /api/messages', { id: 2 })
-    renderAt('/messages')
+    renderAt('/')
     expect(await screen.findByText('Welcome to Project Tracker')).toBeTruthy()
     expect(screen.getByText(/Ada Admin · .* · Everyone/)).toBeTruthy()
     const box = screen.getByLabelText(/Write a message/)
@@ -86,7 +86,7 @@ describe('message board', () => {
 
   it('admins can post to a project instead', async () => {
     respond('POST /api/messages', { id: 2 })
-    renderAt('/messages')
+    renderAt('/')
     fireEvent.mouseDown(await screen.findByRole('combobox', { name: /Post to/ }))
     const options = (await screen.findAllByRole('option')).map((o) => o.textContent)
     expect(options).toEqual(['Everyone (announcement)', 'Decommission 1000 servers'])  // archived projects are left out
@@ -99,7 +99,7 @@ describe('message board', () => {
 
   it('keeps the draft and shows the error when posting fails', async () => {
     respond('POST /api/messages', { detail: 'Message is too long' }, 422)
-    renderAt('/messages')
+    renderAt('/')
     const box = await screen.findByLabelText(/Write a message/)
     fireEvent.change(box, { target: { value: 'Hello' } })
     fireEvent.click(screen.getByRole('button', { name: 'Post' }))
@@ -110,7 +110,7 @@ describe('message board', () => {
 
   it('admins delete any message after confirming', async () => {
     respond('DELETE /api/messages/1', null, 204)
-    renderAt('/messages')
+    renderAt('/')
     fireEvent.click(await screen.findByRole('button', { name: 'Delete message' }))
     let dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('It will be removed from the board for everyone.')).toBeTruthy()
@@ -128,7 +128,7 @@ describe('message board', () => {
 
   it('keeps the confirm dialog open with the error when deleting fails', async () => {
     respond('DELETE /api/messages/1', { detail: 'Message not found' }, 404)
-    renderAt('/messages')
+    renderAt('/')
     fireEvent.click(await screen.findByRole('button', { name: 'Delete message' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
@@ -142,7 +142,7 @@ describe('message board', () => {
       { id: 2, project_id: 1, author_id: 'MGR001', author_name: 'Mia Manager', body: 'Row 4 done', created_at: '2026-10-02T09:00:00Z' },
     ])
     respond('POST /api/messages', { id: 3 })
-    asManager('/messages')
+    asManager('/')
     expect(await screen.findByText('Row 4 done')).toBeTruthy()
     expect(screen.getByText(/Mia Manager · .* · Decommission 1000 servers/)).toBeTruthy()
     expect(screen.getAllByRole('button', { name: 'Delete message' })).toHaveLength(1)  // only their own
@@ -154,40 +154,64 @@ describe('message board', () => {
 
   it('managers without an open project are told they cannot post yet', async () => {
     respond('GET /api/projects', [{ ...project, archived: true }])
-    asManager('/messages')
+    asManager('/')
     expect(await screen.findByText('You can post here once you manage a project.')).toBeTruthy()
     expect(screen.queryByLabelText(/Write a message/)).toBeNull()
   })
 
   it('shows an empty board and load errors', async () => {
     respond('GET /api/messages', [])
-    const { unmount } = renderAt('/messages')
+    const { unmount } = renderAt('/')
     expect(await screen.findByText('No messages yet')).toBeTruthy()
     expect(screen.getByText('Posts appear here, newest first.')).toBeTruthy()
     unmount()
 
     respond('GET /api/messages', { detail: 'Messages are unavailable' }, 503)
-    renderAt('/messages')
+    renderAt('/')
     expect(await screen.findByText('Messages are unavailable')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
   })
 
-  it('the board picker switches between one project\'s posts and all boards', async () => {
-    renderAt('/messages')
+  it('the home page\'s filter switches between one project\'s posts and all boards', async () => {
+    renderAt('/')
     await screen.findByText('Welcome to Project Tracker')
-    expect(lastCall('GET /api/messages').query).toEqual({ limit: '200' })
-    fireEvent.mouseDown(screen.getByRole('combobox', { name: /Board/ }))
+    expect(lastCall('GET /api/messages').query).toEqual({ limit: '20' })
+    expect(screen.getByText('Announcements and every project\'s board.')).toBeTruthy()
+    const filter = screen.getByRole('combobox', { name: /Show posts from/ })
+    expect(filter.textContent).toBe('All boards')
+    fireEvent.mouseDown(filter)
     const options = (await screen.findAllByRole('option')).map((o) => o.textContent)
-    expect(options).toEqual(['All boards', 'Decommission 1000 servers'])
+    expect(options).toEqual(['All boards', 'Decommission 1000 servers'])  // archived projects are left out
     fireEvent.click(screen.getByRole('option', { name: 'Decommission 1000 servers' }))
-    await waitFor(() => expect(lastCall('GET /api/messages').query).toEqual({ project_id: '1', limit: '200' }))
+    await waitFor(() => expect(lastCall('GET /api/messages').query).toEqual({ project_id: '1', limit: '20' }))
+    expect(screen.getByText('Only this project\'s board. New posts go to this project.')).toBeTruthy()
     // A project's board posts there, so there's no "Post to" choice
     expect(await screen.findByLabelText(/Write a message/)).toBeTruthy()
     expect(screen.queryByRole('combobox', { name: /Post to/ })).toBeNull()
 
-    await choose(document.body, /Board/, 'All boards')
-    await waitFor(() => expect(lastCall('GET /api/messages').query).toEqual({ limit: '200' }))
+    await choose(document.body, /Show posts from/, 'All boards')
+    await waitFor(() => expect(lastCall('GET /api/messages').query).toEqual({ limit: '20' }))
     expect(screen.getByRole('combobox', { name: /Post to/ })).toBeTruthy()
+  })
+
+  it('managers and employees are told which boards "All boards" covers', async () => {
+    asManager('/')
+    expect(await screen.findByText('Announcements to everyone, plus the boards of your projects.')).toBeTruthy()
+  })
+
+  it('shows older posts on request, 20 at a time', async () => {
+    const page = (count, from = 1) => Array.from({ length: count }, (_, i) => ({
+      id: from + i, project_id: null, author_id: 'ADMIN1', author_name: 'Ada Admin', body: `Post ${from + i}`, created_at: '2026-10-01T09:00:00Z',
+    }))
+    respond('GET /api/messages', page(20))
+    renderAt('/')
+    expect(await screen.findByText('Post 20')).toBeTruthy()
+    respond('GET /api/messages', page(25))
+    fireEvent.click(screen.getByRole('button', { name: 'Show older posts' }))
+    expect(await screen.findByText('Post 25')).toBeTruthy()
+    expect(lastCall('GET /api/messages').query).toEqual({ limit: '40' })
+    // Fewer posts than asked for means there are no older ones
+    expect(screen.queryByRole('button', { name: 'Show older posts' })).toBeNull()
   })
 
   it('a project\'s board posts to that project and omits the project name', async () => {
@@ -293,7 +317,7 @@ describe('hours', () => {
     fireEvent.change(within(dialog).getByLabelText(/Date/), { target: { value: '2026-10-13' } })
     fireEvent.change(within(dialog).getByLabelText(/Description/), { target: { value: '  Unracked row 5  ' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
-    expect(await screen.findByText('Saved. Grace Hopper logged 44 h that week, over 40.')).toBeTruthy()
+    expect(await screen.findByText('Saved. Grace Hopper logged 44 h that week, which is overtime (more than 40 h).')).toBeTruthy()
     expect(bodyOf('PATCH /api/time-entries/1')).toEqual({ work_date: '2026-10-13', hours: '10', description: 'Unracked row 5' })
     await waitFor(() => expect(countOf('GET /api/time-entries')).toBe(2))
   })
@@ -449,7 +473,7 @@ describe('logging hours', () => {
     expect(picker.getAttribute('aria-disabled')).toBe('true')
     expect(picker.textContent).toBe('Decommission 1000 servers')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Log hours' }))
-    expect(await screen.findByText('Logged. You have 50 h that week, more than a 40-hour week.')).toBeTruthy()
+    expect(await screen.findByText('Logged. You have 50 h that week, which is overtime (more than 40 h).')).toBeTruthy()
     expect(bodyOf('POST /api/time-entries')).toMatchObject({ project_id: 1 })
   })
 })
@@ -457,7 +481,7 @@ describe('logging hours', () => {
 describe('employee home', () => {
   it('this week\'s warning follows the hours shown, not only the server\'s flag', async () => {
     asEmployee('/', { hours_this_week: '42', over_limit_this_week: false })
-    expect(await screen.findByText("You're over a 40-hour week by 2 h.")).toBeTruthy()
+    expect(await screen.findByText("You're in overtime: 2 h over a 40-hour week.")).toBeTruthy()
   })
 
   it('ticking a task saves it and reloads the list', async () => {
@@ -525,7 +549,7 @@ describe('employee home', () => {
 
   it.each([
     ['exactly 40 h is a full week, not over it', { hours_this_week: '40.00', over_limit_this_week: false }, '0 h left in a 40-hour week.'],
-    ['40.25 h is over', { hours_this_week: '40.25', over_limit_this_week: true }, "You're over a 40-hour week by 0.25 h."],
+    ['40.25 h is over', { hours_this_week: '40.25', over_limit_this_week: true }, "You're in overtime: 0.25 h over a 40-hour week."],
     ['under 40 h shows what is left', { hours_this_week: '12.50', over_limit_this_week: false }, '27.5 h left in a 40-hour week.'],
     ['no hours yet', { hours_this_week: null, over_limit_this_week: false }, '40 h left in a 40-hour week.'],
   ])('this week: %s', async (_, home, text) => {
@@ -569,7 +593,7 @@ describe('employee home', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Log hours' }))
     dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Log hours' }))
-    expect(await screen.findByText('Logged. You have 50 h that week, more than a 40-hour week.')).toBeTruthy()
+    expect(await screen.findByText('Logged. You have 50 h that week, which is overtime (more than 40 h).')).toBeTruthy()
     await waitFor(() => expect(countOf('GET /api/reports/home')).toBe(2))
   })
 })
@@ -582,7 +606,7 @@ describe('dashboard', () => {
     expect(await screen.findByText('of $250,000 budgeted')).toBeTruthy()
     expect(screen.getByText('$6,000')).toBeTruthy()
     const hrefs = screen.getAllByRole('link', { name: 'View' }).map((a) => a.getAttribute('href'))
-    expect(hrefs).toEqual(['/projects', '/reports?tab=at-risk', '/reports?tab=at-risk', '/reports?tab=over-allocated', '/reports?tab=budget'])
+    expect(hrefs).toEqual(['/projects', '/reports?tab=at-risk', '/reports?tab=at-risk', '/reports?tab=overtime', '/reports?tab=budget'])
     expect(screen.getByText('Now: Q1: 250 servers')).toBeTruthy()
     // compact: no manager or budget columns
     expect(screen.queryByRole('columnheader', { name: 'Manager' })).toBeNull()
@@ -731,11 +755,11 @@ describe('reports', () => {
         projects: [], last_week_logged_hours: '40.25' },
     ])
     renderAt('/reports?tab=allocation')
-    const grace = (await screen.findByText('EMP001')).closest('tr')
+    const grace = (await screen.findByText('ID EMP001')).closest('tr')
     expect(within(grace).getByText('40 h/week')).toBeTruthy()  // exactly 40 is not over
     expect(within(grace).getByText('· 40 h/week', { exact: false })).toBeTruthy()
     const graceLogged = within(grace).getByText('40 h')
-    const alan = screen.getByText('EMP002').closest('tr')
+    const alan = screen.getByText('ID EMP002').closest('tr')
     expect(within(alan).getByText('No open projects')).toBeTruthy()
     expect(within(alan).getByText('—')).toBeTruthy()  // no manager
     const alanLogged = within(alan).getByText('40.25 h')
@@ -743,15 +767,16 @@ describe('reports', () => {
     expect(getComputedStyle(graceLogged).fontWeight).not.toBe('600')
   })
 
-  it('over-allocated filters by a team from the URL and shows an empty state', async () => {
+  it('overtime filters by a team from the URL and shows an empty state (old over-allocated links still work)', async () => {
     respond('GET /api/reports/over-allocated', [])
     renderAt('/reports?tab=over-allocated&team=5')
-    expect(await screen.findByText('Nobody is over-allocated')).toBeTruthy()
-    expect(screen.getByText('A full work week is 40 hours across all of an employee\'s projects.')).toBeTruthy()
-    expect(screen.getByText('Employees planned for more than 40 hours a week, or who logged more than 40 last week.')).toBeTruthy()
+    expect(await screen.findByText('Nobody is working overtime')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Overtime', selected: true })).toBeTruthy()
+    expect(screen.getByText('A full work week is 40 hours across all of an employee\'s projects. Anything above that is overtime.')).toBeTruthy()
+    expect(screen.getByText(/^Employees working overtime: planned for more than 40 hours a week/)).toBeTruthy()
     expect(lastCall('GET /api/reports/over-allocated').query).toEqual({ team_id: '5' })
     await choose(document.body, /Team/, 'Everyone')
-    await waitFor(() => expect(window.location.search).toBe('?tab=over-allocated'))
+    await waitFor(() => expect(window.location.search).toBe('?tab=overtime'))
   })
 
   it('allocation shows an empty state and still works when teams fail to load', async () => {

@@ -37,10 +37,13 @@ export default function DashboardPage() {
       ) : data && (
         <>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', mb: 3 }}>
-            <Stat label="Open projects" value={data.active_projects} to="/projects" />
-            <Stat label="At risk" value={data.projects_at_risk} tone={data.projects_at_risk ? 'warning' : null} to="/reports?tab=at-risk" />
-            <Stat label="Off track" value={data.projects_off_track} tone={data.projects_off_track ? 'error' : null} to="/reports?tab=at-risk" />
-            <Stat label="Over 40 h/week" value={data.over_allocated_employees} tone={data.over_allocated_employees ? 'warning' : null} to="/reports?tab=over-allocated" />
+            <Stat label="Open projects" value={data.active_projects} detail="Planning or active, not archived" to="/projects" />
+            <Stat label="At risk" value={data.projects_at_risk} detail="Behind schedule, overdue milestones or spending ahead of progress"
+              tone={data.projects_at_risk ? 'warning' : null} to="/reports?tab=at-risk" />
+            <Stat label="Off track" value={data.projects_off_track} detail="Past the deadline or over budget"
+              tone={data.projects_off_track ? 'error' : null} to="/reports?tab=at-risk" />
+            <Stat label="Employees in overtime" value={data.over_allocated_employees} detail="Planned or logged over 40 h a week"
+              tone={data.over_allocated_employees ? 'warning' : null} to="/reports?tab=overtime" />
             <Stat label="Labor cost so far" value={money(data.total_labor_cost)} detail={`of ${money(data.total_budget)} budgeted`} to="/reports?tab=budget" />
           </Box>
           <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'minmax(0, 3fr) minmax(320px, 2fr)', alignItems: 'start' }}>
@@ -51,12 +54,15 @@ export default function DashboardPage() {
                   <Button component={RouterLink} to="/reports" size="small">Full status report</Button>
                 </Stack>
                 <ProjectHealthTable projects={data.projects} compact />
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+                  Risk is worked out from deadlines, milestones and spending. Hover over a risk label to see why a project has it.
+                </Typography>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ mb: 1 }}>Message board</Typography>
-                <MessageBoard limit={10} compact />
+                <MessageBoard filterable limit={20} compact />
               </CardContent>
             </Card>
           </Box>

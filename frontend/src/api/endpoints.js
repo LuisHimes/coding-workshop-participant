@@ -58,6 +58,9 @@ export const projects = {
   milestones: {
     list: (projectId) => request('projects', `/${projectId}/milestones`),
     create: (projectId, body) => request('projects', `/${projectId}/milestones`, { method: 'POST', body }),
+    /** Adds several milestones (e.g. from a template) after the existing ones, all or none. */
+    createMany: (projectId, milestones) =>
+      request('projects', `/${projectId}/milestones/batch`, { method: 'POST', body: { milestones } }),
   },
 }
 
@@ -73,6 +76,14 @@ export const milestones = {
     create: (milestoneId, title) => request('milestones', `/${milestoneId}/tasks`, { method: 'POST', body: { title } }),
     update: (taskId, body) => request('milestones', `/tasks/${taskId}`, { method: 'PATCH', body }),
     remove: (taskId) => request('milestones', `/tasks/${taskId}`, { method: 'DELETE' }),
+  },
+  /** A manager's predefined milestones, reused across projects. */
+  templates: {
+    list: (filters) => request('milestones', '/templates', { query: filters }),
+    get: (templateId) => request('milestones', `/templates/${templateId}`),
+    create: (body) => request('milestones', '/templates', { method: 'POST', body }),
+    update: (templateId, body) => request('milestones', `/templates/${templateId}`, { method: 'PATCH', body }),
+    remove: (templateId) => request('milestones', `/templates/${templateId}`, { method: 'DELETE' }),
   },
   assignments: {
     list: (milestoneId) => request('milestones', `/${milestoneId}/assignments`),

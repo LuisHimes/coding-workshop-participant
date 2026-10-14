@@ -50,7 +50,7 @@ export default function LogHoursDialog({ open, onClose, onLogged, projectId = nu
         })
         const week = Number(entry.week_hours)
         notify(entry.over_limit
-          ? `Logged. You have ${week} h that week, more than a 40-hour week.`
+          ? `Logged. You have ${week} h that week, which is overtime (more than 40 h).`
           : `Logged. You have ${week} h that week.`, entry.over_limit ? 'warning' : 'success')
         setForm(null)
         onLogged?.(entry)
@@ -61,7 +61,8 @@ export default function LogHoursDialog({ open, onClose, onLogged, projectId = nu
         {openProjects.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
       </TextField>
       <TextField id="log-milestone" select label="Milestone (optional)" value={values.milestone_id} onChange={set('milestone_id')}
-        disabled={!values.project_id}>
+        disabled={!values.project_id} slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
+        helperText={values.project_id ? 'The milestone you worked on, if any' : 'Pick a project first'}>
         <MenuItem value="">None</MenuItem>
         {(milestones.data || []).map((m) => <MenuItem key={m.id} value={m.id}>{m.sequence}. {m.title}</MenuItem>)}
       </TextField>

@@ -142,7 +142,7 @@ export default function EmployeeHomePage() {
                   color={overLimit ? 'warning' : 'primary'} sx={{ height: 8, borderRadius: 4, my: 1.5 }} />
                 <Typography variant="body2" color={overLimit ? 'warning.main' : 'text.secondary'}>
                   {overLimit
-                    ? `You're over a 40-hour week by ${hours(weekHours - FULL_WEEK)}.`
+                    ? `You're in overtime: ${hours(weekHours - FULL_WEEK)} over a 40-hour week.`
                     : `${hours(FULL_WEEK - weekHours)} left in a 40-hour week.`}
                 </Typography>
                 <Button component={RouterLink} to="/time-entries" size="small" sx={{ ml: -1, mt: 1 }}>See your hours</Button>
@@ -151,7 +151,7 @@ export default function EmployeeHomePage() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ mb: 1 }}>Message board</Typography>
-                <MessageBoard limit={10} compact />
+                <MessageBoard filterable limit={20} compact />
               </CardContent>
             </Card>
           </Stack>

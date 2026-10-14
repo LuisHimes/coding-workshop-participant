@@ -18,7 +18,7 @@ import { dateTime, fullName } from '../../utils/format'
 function allocationMessage(name, member) {
   const total = Number(member.employee_hours_per_week)
   return member.over_limit
-    ? [`${name} is now planned for ${total} h/week across their projects, more than a 40-hour week.`, 'warning']
+    ? [`${name} is now planned for ${total} h/week across their projects, which is overtime (more than 40 h a week).`, 'warning']
     : [`${name} is planned for ${total} h/week across their projects.`, 'success']
 }
 
@@ -57,6 +57,10 @@ export default function TeamPanel({ project, readOnly }) {
         <EmptyState title="Nobody on this project yet">{readOnly ? null : 'Add employees one at a time, or a whole team.'}</EmptyState>
       ) : (
         <TableContainer>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Planned hours are how many hours a week each person is expected to spend on this project. Above 40 hours a week across
+            all their projects is overtime.
+          </Typography>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -74,7 +78,7 @@ export default function TeamPanel({ project, readOnly }) {
                   <TableRow key={member.id}>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>{directory.userName(member.user_id)}</Typography>
-                      <Typography variant="caption" color="text.secondary">{member.user_id}{user && !user.is_active && ' · deactivated'}</Typography>
+                      <Typography variant="caption" color="text.secondary">ID {member.user_id}{user && !user.is_active && ' · deactivated'}</Typography>
                     </TableCell>
                     <TableCell>{user?.job_title ?? '—'}</TableCell>
                     <TableCell align="right">{Number(member.hours_per_week)} h/week</TableCell>
@@ -130,7 +134,7 @@ export default function TeamPanel({ project, readOnly }) {
           const over = result.added.filter((m) => m.over_limit).map((m) => directory.userName(m.user_id))
           const parts = [`Added ${result.added.length} ${result.added.length === 1 ? 'person' : 'people'}`]
           if (result.skipped.length) parts.push(`skipped ${result.skipped.length} (already on the project or deactivated)`)
-          if (over.length) parts.push(`over 40 h/week: ${over.join(', ')}`)
+          if (over.length) parts.push(`now in overtime (over 40 h/week): ${over.join(', ')}`)
           notify(parts.join('; '), over.length ? 'warning' : 'success')
           reload()
         }}

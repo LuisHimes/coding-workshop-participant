@@ -53,7 +53,7 @@ export default function ProjectsPage() {
             sx={{ maxWidth: 360 }}
           />
           <TextField id="project-status-filter" select label="Status" value={status} onChange={(e) => setStatus(e.target.value)}
-            sx={{ maxWidth: 180 }}>
+            sx={{ maxWidth: 180 }} slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}>
             <MenuItem value="">Any status</MenuItem>
             {Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
           </TextField>

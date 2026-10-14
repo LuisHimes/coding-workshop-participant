@@ -18,6 +18,12 @@ class MilestoneRepository(Repository):
     def create(self, project_id: int, values: dict) -> dict:
         return self._insert({"project_id": project_id, **values})
 
+    def next_sequence(self, project_id: int) -> int:
+        """The sequence number after the project's last milestone (1 for a project without any)."""
+        return self.db.execute(
+            "SELECT coalesce(max(sequence), 0) + 1 AS next FROM milestones WHERE project_id = %s", (project_id,)
+        ).fetchone()["next"]
+
     def get(self, milestone_id: int) -> dict | None:
         return self._get(milestone_id)
 

@@ -57,9 +57,9 @@ describe('admin screens', () => {
     ['/reports?tab=at-risk', 'Reports', /Behind schedule/],
     ['/reports?tab=budget', 'Reports', '$240,000'],
     ['/reports?tab=allocation', 'Reports', 'Logged last week'],
-    ['/reports?tab=over-allocated', 'Reports', '45 h/week · over 40'],
+    ['/reports?tab=overtime', 'Reports', '45 h/week · overtime'],
     ['/time-entries', 'Hours', 'Unracked row 4'],
-    ['/messages', 'Message board', 'Welcome to Project Tracker'],
+    ['/milestone-templates', 'Milestone templates', 'Software release'],
     ['/audit', 'Audit log', '200000 → 250000'],
     ['/profile', 'Your profile', 'Administrator'],
   ]
@@ -258,7 +258,7 @@ describe('manager screens', () => {
   })
 
   it('managers post to their projects, not to everyone, and only delete their own posts', async () => {
-    asManager('/messages')
+    asManager('/')
     expect(await screen.findByText('Welcome to Project Tracker')).toBeTruthy()
     expect(screen.getByText(/Ada Admin/)).toBeTruthy()  // the author's name comes with the message
     expect(screen.queryByRole('button', { name: 'Delete message' })).toBeNull()  // posted by an admin
@@ -300,7 +300,7 @@ describe('employee screens', () => {
     expect(await screen.findByText('Welcome back, Grace')).toBeTruthy()
     expect(await screen.findByText('1. Q1: 250 servers')).toBeTruthy()
     expect(await screen.findByText('Unrack 250 servers')).toBeTruthy()
-    expect(screen.getByText(/over a 40-hour week by 2 h/)).toBeTruthy()
+    expect(screen.getByText(/in overtime: 2 h over a 40-hour week/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Mark my part finished' })).toBeTruthy()
   })
 
@@ -356,7 +356,7 @@ describe('employee screens', () => {
     fireEvent.click(await screen.findByRole('option', { name: 'Decommission 1000 servers' }))
     fireEvent.change(within(dialog).getByLabelText(/Hours/), { target: { value: '4' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Log hours' }))
-    expect(await screen.findByText('Logged. You have 46 h that week, more than a 40-hour week.')).toBeTruthy()
+    expect(await screen.findByText('Logged. You have 46 h that week, which is overtime (more than 40 h).')).toBeTruthy()
     const body = JSON.parse(calls.find((c) => c.route === 'POST /api/time-entries').body)
     expect(body).toMatchObject({ project_id: 1, hours: '4', milestone_id: null })
   })

@@ -10,7 +10,7 @@ It covers every admin, manager and employee feature. Each screen shows only what
 
 | Screen          | What admins can do                                                                                   |
 | --------------- | ---------------------------------------------------------------------------------------------------- |
-| Dashboard       | Open, at-risk and off-track projects, over-allocated employees, labor cost against budget, project status table, message board |
+| Dashboard       | Open, at-risk and off-track projects, employees in overtime, labor cost against budget (each number explained), project status table, and the message board with a filter for all boards or one project |
 | Projects        | Search and filter (status, open or archived); each open project's progress bar; create projects with a manager, dates, hours and budget |
 | Calendar        | Month view of milestones as bars across their dates, colored by state (overdue in red), with milestone and project deadlines highlighted; filter by project; a list of the month's deadlines |
 | Project page    | Progress bar (milestones placed on the timeline by state, with today marked); edit everything including budget and manager; delete (archives it, kept for history); unarchive; budget estimate with "Use as budget"; health and deadline risk |
@@ -21,9 +21,9 @@ It covers every admin, manager and employee feature. Each screen shows only what
 | · Message board | The project's posts                                                                                   |
 | Users           | Search and filter; create users (shows the generated ID and temporary password once); edit role, title, salary, manager and status; reset passwords |
 | Teams           | Create a team for a manager; add or remove their direct reports; rename; delete                      |
+| Milestone templates | A manager's predefined milestones (in order, with an optional usual length); create, edit, reorder, delete. On a project's Milestones tab, "Add from template" adds them with suggested dates you can change |
 | Reports         | Project status, at-risk projects with reasons, budget consumed versus planned, resource allocation and over-allocation (filter by team) |
 | Hours           | Every time entry, filtered by employee, project and dates; corrections and deletes                   |
-| Message board   | Announcements to everyone or posts to a project; delete                                               |
 | Audit log       | Every change and login, filtered by record type, record, user and date; changes shown as old → new    |
 | Your profile    | Edit name and email; change password                                                                  |
 
@@ -41,9 +41,10 @@ Managers use the same screens, limited to their own work:
 | Project page  | Team (add employees or one of their teams), milestones, tasks, assignments, deliverables, hours (read-only), message board |
 | Employees     | Every employee, with salaries, read-only                                                                 |
 | Teams         | Create teams of their direct reports; manage members; rename; delete                                     |
+| Milestone templates | Their own predefined milestones, added to their projects with a start and end date for each        |
 | Reports       | Status, risk, budget and allocation for their projects and the employees on them                         |
 | Hours         | Hours logged on their projects, read-only                                                                |
-| Message board | Post to their projects' boards; delete their own posts                                                   |
+| Message board | On the dashboard: post to their projects' boards; delete their own posts                                 |
 
 Managers don't see the audit log, can't create, delete or archive projects, and can't add or edit users. Other managers' and admins' names stay hidden from them.
 
@@ -56,7 +57,7 @@ Managers don't see the audit log, can't create, delete or archive projects, and 
 | Calendar      | Milestones and deadlines of their projects                                                              |
 | Project page  | Details, teammates, milestones (tick off tasks and mark their part finished on milestones they're assigned to), deliverables, their own hours with "Log hours", the message board |
 | My hours      | Log, correct and delete their own hours; each save shows the week's total, flagged above 40              |
-| Message board | Read announcements and their projects' posts; post to their projects; delete their own posts           |
+| Message board | On the home page: read announcements and their projects' posts; post to their projects; delete their own posts |
 | Your profile  | Edit name and email; change password                                                                    |
 
 Employees never see salaries, budgets or costs; the backend leaves them out of every response to employees.

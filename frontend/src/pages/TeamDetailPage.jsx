@@ -94,7 +94,7 @@ export default function TeamDetailPage() {
                     <TableRow key={m.user_id} sx={{ opacity: m.is_active ? 1 : 0.6 }}>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{m.first_name} {m.last_name}</Typography>
-                        <Typography variant="caption" color="text.secondary">{m.user_id}{!m.is_active && ' · deactivated'}</Typography>
+                        <Typography variant="caption" color="text.secondary">ID {m.user_id}{!m.is_active && ' · deactivated'}</Typography>
                       </TableCell>
                       <TableCell>{m.job_title}</TableCell>
                       <TableCell>{dateTime(m.added_at)}</TableCell>

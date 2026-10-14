@@ -26,7 +26,9 @@ from psycopg import Connection, connect, errors
 from psycopg.rows import dict_row, tuple_row
 
 from config import settings
-from models import audit, base, dashboard, messages, milestones, projects, teams, time_entries, users
+from models import (
+    audit, base, dashboard, messages, milestone_templates, milestones, projects, teams, time_entries, users,
+)
 from repository.users import UserRepository
 from service.auth import ensure_initial_admin
 
@@ -45,6 +47,7 @@ SCHEMA = [
     time_entries.SCHEMA,
     messages.SCHEMA,
     teams.SCHEMA,
+    milestone_templates.SCHEMA,
     audit.SCHEMA,
     dashboard.SCHEMA,
 ]

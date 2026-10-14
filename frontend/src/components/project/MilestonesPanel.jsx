@@ -5,6 +5,7 @@ import {
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import AddIcon from '@mui/icons-material/Add'
+import ViewTimelineIcon from '@mui/icons-material/ViewTimeline'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -14,6 +15,7 @@ import { useApiData } from '../../hooks/useApiData'
 import { useDirectory } from '../Directory'
 import { useNotify } from '../Notifications'
 import FormDialog from '../FormDialog'
+import ApplyTemplateDialog from './ApplyTemplateDialog'
 import { ConfirmDialog, EmptyState, ErrorAlert, Loading, MilestoneStatusChip, UserPicker } from '../common'
 import { day } from '../../utils/format'
 
@@ -182,6 +184,7 @@ export default function MilestonesPanel({ project, readOnly }) {
   const { data, error, loading, reload } = useApiData(() => projectsApi.milestones.list(project.id), [project.id])
   const members = useApiData(() => projectsApi.members.list(project.id), [project.id])
   const [creating, setCreating] = useState(false)
+  const [applying, setApplying] = useState(false)
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [form, setForm] = useState({})
@@ -204,10 +207,15 @@ export default function MilestonesPanel({ project, readOnly }) {
   return (
     <Box>
       {canManage && (
-        <Button variant="contained" startIcon={<AddIcon />} sx={{ mb: 2 }}
-          onClick={() => { setForm({ title: '', description: '', start_date: project.start_date, end_date: project.projected_end_date }); setCreating(true) }}>
-          Add milestone
-        </Button>
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          <Button variant="contained" startIcon={<AddIcon />}
+            onClick={() => { setForm({ title: '', description: '', start_date: project.start_date, end_date: project.projected_end_date }); setCreating(true) }}>
+            Add milestone
+          </Button>
+          <Tooltip describeChild title="Add a saved list of milestones in one step, choosing the dates for each">
+            <Button variant="outlined" startIcon={<ViewTimelineIcon />} onClick={() => setApplying(true)}>Add from template</Button>
+          </Tooltip>
+        </Stack>
       )}
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Milestones run in order: each one can start only after the one before it is completed.
@@ -254,6 +262,10 @@ export default function MilestonesPanel({ project, readOnly }) {
         <Typography variant="body2" color="text.secondary">This becomes milestone {nextSequence}, after the ones already planned.</Typography>
         <MilestoneForm form={form} setForm={setForm} />
       </FormDialog>
+
+      {canManage && (
+        <ApplyTemplateDialog open={applying} project={project} existing={data || []} onClose={() => setApplying(false)} onAdded={reload} />
+      )}
 
       <FormDialog open={Boolean(editing)} title="Edit milestone" onClose={() => setEditing(null)}
         onSubmit={async () => {

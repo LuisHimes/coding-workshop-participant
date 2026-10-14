@@ -99,7 +99,7 @@ export default function AuditPage() {
       <PageHeader title="Audit log" subtitle="Every change and login: what was done, by whom, and when. Newest first." />
       <Card>
         <Stack direction="row" spacing={2} sx={{ p: 2 }}>
-          <TextField id="audit-entity" select label="What changed" value={filters.entity} sx={{ maxWidth: 220 }}
+          <TextField id="audit-entity" select label="What changed" value={filters.entity} sx={{ maxWidth: 220 }} slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
             onChange={(e) => setFilters({ ...filters, entity: e.target.value })}>
             <MenuItem value="">Anything</MenuItem>
             {Object.entries(ENTITIES).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}

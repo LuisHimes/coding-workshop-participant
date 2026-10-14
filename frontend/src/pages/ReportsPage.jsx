@@ -16,7 +16,7 @@ const TABS = {
   'at-risk': 'At risk',
   budget: 'Budget',
   allocation: 'Resource allocation',
-  'over-allocated': 'Over-allocated',
+  overtime: 'Overtime',
 }
 
 function ProjectStatusReport() {
@@ -127,25 +127,25 @@ function AllocationReport({ overAllocatedOnly }) {
     () => (overAllocatedOnly ? reports.overAllocated(teamId || undefined) : reports.allocation(teamId || undefined)),
     [overAllocatedOnly, teamId],
   )
-  const tab = overAllocatedOnly ? 'over-allocated' : 'allocation'
+  const tab = overAllocatedOnly ? 'overtime' : 'allocation'
 
   return (
     <Card>
       <Stack direction="row" spacing={2} sx={{ p: 2, alignItems: 'center' }}>
-        <TextField id="allocation-team" select label="Team" value={teamId} sx={{ maxWidth: 320 }}
+        <TextField id="allocation-team" select label="Team" value={teamId} sx={{ maxWidth: 320 }} slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
           onChange={(e) => setSearchParams(e.target.value ? { tab, team: e.target.value } : { tab }, { replace: true })}>
           <MenuItem value="">Everyone</MenuItem>
           {(teamList.data || []).map((t) => <MenuItem key={t.id} value={String(t.id)}>{t.name} ({directory.userName(t.manager_id)})</MenuItem>)}
         </TextField>
         <Typography variant="body2" color="text.secondary">
           {overAllocatedOnly
-            ? 'Employees planned for more than 40 hours a week, or who logged more than 40 last week.'
+            ? 'Employees working overtime: planned for more than 40 hours a week across their projects, or logged more than 40 hours last week.'
             : 'Planned hours per week on open projects, against a 40-hour week.'}
         </Typography>
       </Stack>
       <ErrorAlert error={error} onRetry={reload} />
       {loading && !data ? <Loading /> : data?.length === 0 ? (
-        <EmptyState title={overAllocatedOnly ? 'Nobody is over-allocated' : 'No employees to show'} />
+        <EmptyState title={overAllocatedOnly ? 'Nobody is working overtime' : 'No employees to show'} />
       ) : (
         <TableContainer>
           <Table size="small">
@@ -163,7 +163,7 @@ function AllocationReport({ overAllocatedOnly }) {
                 <TableRow key={a.user_id}>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.first_name} {a.last_name}</Typography>
-                    <Typography variant="caption" color="text.secondary">{a.user_id}</Typography>
+                    <Typography variant="caption" color="text.secondary">ID {a.user_id}</Typography>
                   </TableCell>
                   <TableCell>{directory.userName(a.manager_id)}</TableCell>
                   <TableCell><HoursChip hours={a.hours_per_week} overLimit={a.over_limit} /></TableCell>
@@ -195,7 +195,9 @@ function AllocationReport({ overAllocatedOnly }) {
 export default function ReportsPage() {
   const { isAdmin } = useRole()
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab = TABS[searchParams.get('tab')] ? searchParams.get('tab') : 'projects'
+  // Old links used "over-allocated" for the overtime tab
+  const requested = searchParams.get('tab') === 'over-allocated' ? 'overtime' : searchParams.get('tab')
+  const tab = TABS[requested] ? requested : 'projects'
   return (
     <>
       <PageHeader title="Reports" subtitle={isAdmin
@@ -209,9 +211,9 @@ export default function ReportsPage() {
       {tab === 'at-risk' && <AtRiskReport />}
       {tab === 'budget' && <BudgetReport />}
       {tab === 'allocation' && <AllocationReport />}
-      {tab === 'over-allocated' && (
+      {tab === 'overtime' && (
         <>
-          <Alert severity="info" sx={{ mb: 2 }}>A full work week is 40 hours across all of an employee's projects.</Alert>
+          <Alert severity="info" sx={{ mb: 2 }}>A full work week is 40 hours across all of an employee's projects. Anything above that is overtime.</Alert>
           <AllocationReport overAllocatedOnly />
         </>
       )}

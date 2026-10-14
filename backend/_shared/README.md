@@ -133,6 +133,7 @@ Every route needs a bearer token (see [Logging in](#logging-in)) except the heal
 | GET, POST             | `/projects/{id}/milestones`                       | Milestones in order; managers add them                             |
 | GET                   | `/projects/{id}/deliverables`                     | Progress, assignees and dependency chain of each milestone         |
 | POST                  | `/projects/{id}/teams`                            | Add a whole team to a project: `{"team_id", "hours_per_week"}`     |
+| POST                  | `/projects/{id}/milestones/batch`                 | Add several milestones after the existing ones, all or none (used for templates) |
 | GET, POST             | `/teams`                                          | Your teams (admins: all, `manager_id`); create a team              |
 | GET, PATCH, DELETE    | `/teams/{id}`                                     | View, rename or delete a team                                      |
 | GET, POST             | `/teams/{id}/members`                             | Members; add one of the manager's direct reports                   |
@@ -152,7 +153,9 @@ Every route needs a bearer token (see [Logging in](#logging-in)) except the heal
 | GET                   | `/reports/projects`                               | Status, completion, budget and risk of each project                |
 | GET                   | `/reports/at-risk`                                | Projects at risk of missing their deadlines, with reasons          |
 | GET                   | `/reports/budget`                                 | Budget consumed versus planned                                     |
-| GET                   | `/reports/allocation`, `/reports/over-allocated`  | Hours per employee per project; who is over 40 h/week (`team_id` filters to one team) |
+| GET, POST             | `/milestones/templates`                           | Your milestone templates (admins: all, `manager_id`); create one with its milestones |
+| GET, PATCH, DELETE    | `/milestones/templates/{id}`                      | View, edit (milestones replace the list) or delete a template      |
+| GET                   | `/reports/allocation`, `/reports/over-allocated`  | Hours per employee per project; who is working overtime, over 40 h/week (`team_id` filters to one team) |
 | GET                   | `/audit`                                          | Admins: audit log (`entity`, `entity_id`, `actor_id`, `since`)     |
 
 ## Logging in
@@ -321,6 +324,8 @@ The schema is created automatically on the first database connection; see [Migra
 | `messages`              | Message board posts, global or per project                                        |
 | `teams`                 | Named groups of a manager's direct reports                                        |
 | `team_members`          | Who is on each team                                                               |
+| `milestone_templates`   | A manager's named, reusable list of milestones                                    |
+| `milestone_template_items` | The milestones in a template, in order, with an optional usual length in days  |
 | `audit_log`             | Every change: what, who and when                                                  |
 
 Views: `project_status` (completion, hours, labor cost against budget), `weekly_hours` and `employee_allocation` (both flag more than 40 hours a week).

@@ -1,6 +1,36 @@
 import { Box, Stack, Tooltip, Typography } from '@mui/material'
 import { day, todayIso } from '../utils/format'
-import { MILESTONE_STATES, daysBetween, milestoneState } from '../utils/milestones'
+import { MILESTONE_STATES, daysBetween, milestoneState, parseDay } from '../utils/milestones'
+
+// Tick labels closer than this (percent of the bar) would overlap, so the crowded ones are skipped
+const MIN_LABEL_GAP = 11
+
+function tickLabel(iso, withYear) {
+  return parseDay(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(withYear && { year: 'numeric' }) })
+}
+
+/** Ticks at the start, at each milestone's start, and at the end; labels skip ticks too close to a labelled one. */
+function timelineTicks(start, end, milestones, at) {
+  const dates = [...new Set([start, ...milestones.map((m) => m.start_date)])].sort()
+  const ticks = [...dates.map((iso) => ({ iso, pos: at(iso) })), { iso: end, pos: 100 }]
+  let lastLabelled = null
+  for (const tick of ticks) {
+    const isEnd = tick.pos === 100
+    if (lastLabelled && tick.pos - lastLabelled.pos < MIN_LABEL_GAP) {
+      if (!isEnd) continue
+      lastLabelled.label = null  // the end date matters more than the tick before it
+    }
+    tick.label = true
+    lastLabelled = tick
+  }
+  let year = null
+  for (const tick of ticks.filter((t) => t.label)) {
+    const tickYear = tick.iso.slice(0, 4)
+    tick.label = tickLabel(tick.iso, tickYear !== year)
+    year = tickYear
+  }
+  return ticks
+}
 
 /**
  * A project's timeline as one bar: each milestone is a segment placed by its
@@ -30,7 +60,7 @@ export default function ProjectProgressBar({ project, milestones, compact = fals
   return (
     <Box sx={{ minWidth: compact ? 160 : 0 }}>
       <Box role="img" aria-label={label}
-        sx={{ position: 'relative', height: compact ? 10 : 22, borderRadius: 1, bgcolor: 'action.hover', overflow: 'hidden' }}>
+        sx={{ position: 'relative', height: compact ? 10 : 26, borderRadius: 1, bgcolor: 'action.hover', overflow: 'hidden' }}>
         {sorted.map((m, i) => {
           const state = MILESTONE_STATES[states[i]]
           const width = ((daysBetween(m.start_date, m.end_date) + 1) / span) * 100
@@ -44,9 +74,13 @@ export default function ProjectProgressBar({ project, milestones, compact = fals
               <Box sx={{
                 position: 'absolute', top: 0, bottom: 0, left: `${at(m.start_date)}%`, width: `${width}%`,
                 bgcolor: state.color, color: state.text, borderRight: 2, borderColor: 'background.paper',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600,
+                display: 'flex', alignItems: 'center', fontSize: 12, fontWeight: 600, px: 0.75, minWidth: 0,
               }}>
-                {!compact && width > 4 && m.sequence}
+                {!compact && width >= 3 && (
+                  <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>
+                    {m.title}
+                  </Box>
+                )}
               </Box>
             </Tooltip>
           )
@@ -57,7 +91,24 @@ export default function ProjectProgressBar({ project, milestones, compact = fals
           </Tooltip>
         )}
       </Box>
-      <Typography variant="caption" color={overdue ? 'error.main' : 'text.secondary'} sx={{ display: 'block', mt: 0.5 }}>
+      {!compact && (
+        <Box aria-hidden sx={{ position: 'relative', height: 28 }}>
+          {timelineTicks(start, end, sorted, at).map((tick) => (
+            <Box key={`${tick.iso}-${tick.pos}`} data-testid="timeline-tick" sx={{ position: 'absolute', left: `${tick.pos}%`, top: 0 }}>
+              <Box sx={{ width: '1px', height: 6, bgcolor: 'text.secondary', ml: tick.pos === 100 ? '-1px' : 0 }} />
+              {tick.label && (
+                <Typography variant="caption" color="text.secondary" sx={{
+                  position: 'absolute', top: 6, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+                  transform: tick.pos === 0 ? 'none' : tick.pos === 100 ? 'translateX(-100%)' : 'translateX(-50%)',
+                }}>
+                  {tick.label}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+      <Typography variant="caption" color={overdue ? 'error.main' : 'text.secondary'} sx={{ display: 'block', mt: compact ? 0.5 : 0 }}>
         {compact && sorted.length ? `${done}/${sorted.length} done${overdue ? ` · ${overdue} overdue` : ''}` : summary}
       </Typography>
       {!compact && (
@@ -74,9 +125,9 @@ export default function ProjectProgressBar({ project, milestones, compact = fals
               <Typography variant="caption">Today</Typography>
             </Stack>
           )}
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto !important' }}>
-            {day(start)} – {day(end)}
-          </Typography>
+          {sorted.length > 0 && (
+            <Typography variant="caption" color="text.secondary">Hover over a milestone for its full name, dates and status.</Typography>
+          )}
         </Stack>
       )}
     </Box>

@@ -147,7 +147,8 @@ export default function UsersPage() {
           <TextField id="user-search" placeholder="Search by name, email or ID" value={q} onChange={(e) => setQ(e.target.value)}
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
             sx={{ maxWidth: 320 }} />
-          <TextField id="user-role-filter" select label="Role" value={role} onChange={(e) => setRole(e.target.value)} sx={{ maxWidth: 160 }}>
+          <TextField id="user-role-filter" select label="Role" value={role} onChange={(e) => setRole(e.target.value)} sx={{ maxWidth: 160 }}
+            slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}>
             <MenuItem value="">Any role</MenuItem>
             {Object.entries(ROLE_LABELS).filter(([value]) => isAdmin || value !== 'admin')
               .map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
@@ -196,7 +197,7 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell align="right">{money(u.salary)}</TableCell>
                     <TableCell>
-                      {!u.is_active ? 'Deactivated' : u.must_change_password ? 'Temporary password' : 'Active'}
+                      {!u.is_active ? 'Deactivated (can\'t log in)' : u.must_change_password ? 'Hasn\'t logged in yet' : 'Active'}
                     </TableCell>
                   </TableRow>
                 ))}

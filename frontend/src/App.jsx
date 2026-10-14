@@ -13,9 +13,9 @@ import ProjectDetailPage from './pages/ProjectDetailPage'
 import UsersPage from './pages/UsersPage'
 import TeamsPage from './pages/TeamsPage'
 import TeamDetailPage from './pages/TeamDetailPage'
+import MilestoneTemplatesPage from './pages/MilestoneTemplatesPage'
 import ReportsPage from './pages/ReportsPage'
 import TimeEntriesPage from './pages/TimeEntriesPage'
-import MessagesPage from './pages/MessagesPage'
 import AuditPage from './pages/AuditPage'
 import ProfilePage from './pages/ProfilePage'
 import EmployeeHomePage from './pages/EmployeeHomePage'
@@ -52,7 +52,6 @@ function AppRoutes() {
             <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/time-entries" element={<TimeEntriesPage />} />
-            <Route path="/messages" element={<MessagesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
@@ -71,9 +70,9 @@ function AppRoutes() {
           <Route path="/users" element={<UsersPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:teamId" element={<TeamDetailPage />} />
+          <Route path="/milestone-templates" element={<MilestoneTemplatesPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/time-entries" element={<TimeEntriesPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
           {user.role === 'admin' && <Route path="/audit" element={<AuditPage />} />}
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -72,7 +72,7 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
         onSubmit={async () => {
           const saved = await timeEntriesApi.update(editing.id, { ...form, description: form.description.trim() || null })
           notify(saved.over_limit
-            ? `Saved. ${directory.userName(saved.user_id)} logged ${Number(saved.week_hours)} h that week, over 40.`
+            ? `Saved. ${directory.userName(saved.user_id)} logged ${Number(saved.week_hours)} h that week, which is overtime (more than 40 h).`
             : 'Time entry saved', saved.over_limit ? 'warning' : 'success')
           onChanged()
         }}>

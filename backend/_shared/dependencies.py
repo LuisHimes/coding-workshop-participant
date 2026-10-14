@@ -39,6 +39,7 @@ from repository.dashboard import DashboardRepository
 from repository.messages import MessageRepository
 from repository.milestones import MilestoneRepository
 from repository.projects import ProjectRepository
+from repository.milestone_templates import MilestoneTemplateRepository
 from repository.teams import TeamRepository
 from repository.time_entries import TimeEntryRepository
 from repository.users import UserRepository
@@ -49,6 +50,7 @@ from service.milestones import MilestoneService
 from service.projects import ProjectService
 from service.reports import ReportService
 from service.security import decode_access_token
+from service.milestone_templates import MilestoneTemplateService
 from service.teams import TeamService
 from service.time_entries import TimeEntryService
 from service.users import UserService
@@ -101,6 +103,13 @@ DashboardRepositoryDep = Annotated[DashboardRepository, Depends(get_dashboard_re
 TeamRepositoryDep = Annotated[TeamRepository, Depends(get_team_repository)]
 
 
+def get_milestone_template_repository(db: DbConnection) -> MilestoneTemplateRepository:
+    return MilestoneTemplateRepository(db)
+
+
+MilestoneTemplateRepositoryDep = Annotated[MilestoneTemplateRepository, Depends(get_milestone_template_repository)]
+
+
 # Services
 
 
@@ -145,6 +154,14 @@ def get_team_service(teams: TeamRepositoryDep, users: UserRepositoryDep, project
 
 
 TeamServiceDep = Annotated[TeamService, Depends(get_team_service)]
+
+
+def get_milestone_template_service(templates: MilestoneTemplateRepositoryDep,
+                                   users: UserRepositoryDep) -> MilestoneTemplateService:
+    return MilestoneTemplateService(templates, users)
+
+
+MilestoneTemplateServiceDep = Annotated[MilestoneTemplateService, Depends(get_milestone_template_service)]
 
 
 def get_report_service(dashboard: DashboardRepositoryDep, projects: ProjectRepositoryDep,

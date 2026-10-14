@@ -60,6 +60,8 @@ def _unique_message(error: pg_errors.UniqueViolation) -> str:
         return "That employee is already assigned to this milestone"
     if "teams_manager_name" in constraint:
         return "This manager already has a team with that name"
+    if "milestone_templates_manager_name" in constraint:
+        return "This manager already has a milestone template with that name"
     if "team_members" in constraint:
         return "That employee is already on this team"
     if "sequence" in constraint:

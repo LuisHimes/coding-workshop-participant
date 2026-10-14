@@ -27,6 +27,8 @@ AUDITED_TABLES = [
     "messages",
     "teams",
     "team_members",
+    "milestone_templates",
+    "milestone_template_items",
 ]
 
 SCHEMA = """

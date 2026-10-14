@@ -8,6 +8,7 @@ from fastapi import APIRouter, Response, status
 from dependencies import CurrentUser, MilestoneServiceDep, ProjectServiceDep, ReportServiceDep, TeamServiceDep
 from models.dashboard import DeliverableReport
 from models.teams import TeamProjectAssignment, TeamStaffingResult
+from models.milestone_templates import MilestoneBatchCreate
 from models.milestones import Milestone, MilestoneCreate
 from models.projects import (
     BudgetEstimate, Project, ProjectArchive, ProjectCreate, ProjectMember, ProjectMemberAllocation,
@@ -109,6 +110,13 @@ def list_milestones(project_id: int, user: CurrentUser, milestones: MilestoneSer
 def create_milestone(project_id: int, body: MilestoneCreate, user: CurrentUser,
                      milestones: MilestoneServiceDep) -> Milestone:
     return milestones.create_milestone(user, project_id, body)
+
+
+@router.post("/{project_id}/milestones/batch", status_code=status.HTTP_201_CREATED)
+def create_milestones(project_id: int, body: MilestoneBatchCreate, user: CurrentUser,
+                      milestones: MilestoneServiceDep) -> list[Milestone]:
+    """Adds several milestones (for example from a milestone template) after the existing ones, all or none."""
+    return milestones.create_milestones(user, project_id, body)
 
 
 @router.get("/{project_id}/deliverables")

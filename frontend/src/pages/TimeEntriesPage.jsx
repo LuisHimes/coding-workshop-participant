@@ -41,7 +41,7 @@ export default function TimeEntriesPage() {
               <UserPicker label="Employee" options={employees} value={filters.user_id} onChange={(id) => setFilters({ ...filters, user_id: id })} />
             </Box>
           )}
-          <TextField id="hours-project" select label="Project" value={filters.project_id} sx={{ maxWidth: 280 }}
+          <TextField id="hours-project" select label="Project" value={filters.project_id} sx={{ maxWidth: 280 }} slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
             onChange={(e) => setFilters({ ...filters, project_id: e.target.value })}>
             <MenuItem value="">Any project</MenuItem>
             {directory.projects.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}{p.archived ? ' (archived)' : ''}</MenuItem>)}

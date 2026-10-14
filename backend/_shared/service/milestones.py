@@ -16,6 +16,7 @@ Milestones (deliverables), their tasks, and the employees assigned to them.
 
 from datetime import date
 
+from models.milestone_templates import MilestoneBatchCreate
 from models.milestones import (
     Milestone, MilestoneAssignment, MilestoneCreate, MilestoneTask, MilestoneTaskCreate, MilestoneTaskUpdate,
     MilestoneUpdate,
@@ -72,6 +73,18 @@ class MilestoneService:
         self.project_service.get_manageable(actor, project_id)
         with database_rules():
             return Milestone.model_validate(self.milestones.create(project_id, data.model_dump()))
+
+    def create_milestones(self, actor: dict, project_id: int, data: MilestoneBatchCreate) -> list[Milestone]:
+        """
+        Adds several milestones after the project's existing ones, in the given
+        order, all or none (used when applying a milestone template).
+        """
+        self.project_service.get_manageable(actor, project_id)
+        with database_rules(), self.milestones.transaction():
+            first = self.milestones.next_sequence(project_id)
+            created = [self.milestones.create(project_id, {**planned.model_dump(), "sequence": first + offset})
+                       for offset, planned in enumerate(data.milestones)]
+        return [Milestone.model_validate(row) for row in created]
 
     def update_milestone(self, actor: dict, milestone_id: int, data: MilestoneUpdate) -> Milestone:
         """

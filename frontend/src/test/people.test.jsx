@@ -123,8 +123,8 @@ describe('users page (admin)', { timeout: 15000 }, () => {
     const graceRow = within(await row('Grace Hopper'))
     expect(graceRow.getByText('Another manager')).toBeTruthy()
     expect(graceRow.getByText('$104,000')).toBeTruthy()
-    expect(within(await row('Old Timer')).getByText('Deactivated')).toBeTruthy()
-    expect(within(await row('New Hire')).getByText('Temporary password')).toBeTruthy()
+    expect(within(await row('Old Timer')).getByText("Deactivated (can't log in)")).toBeTruthy()
+    expect(within(await row('New Hire')).getByText("Hasn't logged in yet")).toBeTruthy()
   })
 
   it('names the manager when the directory knows them', async () => {
@@ -456,7 +456,7 @@ describe('team detail', { timeout: 15000 }, () => {
   it('marks deactivated members and shows an empty team', async () => {
     respond('GET /api/teams/5/members', [{ ...member, is_active: false }])
     const { unmount } = renderAt('/teams/5')
-    expect(await screen.findByText('EMP001 · deactivated')).toBeTruthy()
+    expect(await screen.findByText('ID EMP001 · deactivated')).toBeTruthy()
     unmount()
 
     respond('GET /api/teams/5/members', [])
@@ -960,9 +960,15 @@ describe('api endpoints', () => {
     ['projects.members.remove', () => api.projects.members.remove(1, 'EMP001'), 'DELETE', '/projects/1/members/EMP001'],
     ['projects.milestones.list', () => api.projects.milestones.list(1), 'GET', '/projects/1/milestones'],
     ['projects.milestones.create', () => api.projects.milestones.create(1, { title: 'M' }), 'POST', '/projects/1/milestones', { title: 'M' }],
+    ['projects.milestones.createMany', () => api.projects.milestones.createMany(1, [{ title: 'M' }]), 'POST', '/projects/1/milestones/batch', { milestones: [{ title: 'M' }] }],
     ['milestones.list', () => api.milestones.list({ start: '2026-10-01', end: '2026-10-31' }), 'GET', '/milestones?start=2026-10-01&end=2026-10-31'],
     ['milestones.active', () => api.milestones.active(), 'GET', '/milestones/active'],
     ['milestones.get', () => api.milestones.get(10), 'GET', '/milestones/10'],
+    ['milestones.templates.list', () => api.milestones.templates.list({ manager_id: 'MGR001' }), 'GET', '/milestones/templates?manager_id=MGR001'],
+    ['milestones.templates.get', () => api.milestones.templates.get(7), 'GET', '/milestones/templates/7'],
+    ['milestones.templates.create', () => api.milestones.templates.create({ name: 'T' }), 'POST', '/milestones/templates', { name: 'T' }],
+    ['milestones.templates.update', () => api.milestones.templates.update(7, { name: 'U' }), 'PATCH', '/milestones/templates/7', { name: 'U' }],
+    ['milestones.templates.remove', () => api.milestones.templates.remove(7), 'DELETE', '/milestones/templates/7'],
     ['milestones.update', () => api.milestones.update(10, { status: 'completed' }), 'PATCH', '/milestones/10', { status: 'completed' }],
     ['milestones.remove', () => api.milestones.remove(10), 'DELETE', '/milestones/10'],
     ['milestones.tasks.list', () => api.milestones.tasks.list(10), 'GET', '/milestones/10/tasks'],
@@ -1137,7 +1143,7 @@ describe('shared components', () => {
 
   it('hours chips show an optional label and the over-40 warning', () => {
     render(<><HoursChip hours="45.0" overLimit label="Planned" /><HoursChip hours="20.50" /></>)
-    expect(screen.getByText('Planned 45 h/week · over 40')).toBeTruthy()
+    expect(screen.getByText('Planned 45 h/week · overtime')).toBeTruthy()
     expect(screen.getByText('20.5 h/week')).toBeTruthy()
   })
 

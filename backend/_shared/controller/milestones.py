@@ -7,7 +7,8 @@ from datetime import date
 
 from fastapi import APIRouter, Response, status
 
-from dependencies import CurrentUser, MilestoneServiceDep
+from dependencies import CurrentUser, MilestoneServiceDep, MilestoneTemplateServiceDep
+from models.milestone_templates import MilestoneTemplate, MilestoneTemplateCreate, MilestoneTemplateUpdate
 from models.milestones import (
     Milestone, MilestoneAssignment, MilestoneAssignmentCreate, MilestoneAssignmentUpdate, MilestoneTask,
     MilestoneTaskCreate, MilestoneTaskUpdate, MilestoneUpdate,
@@ -21,6 +22,42 @@ def list_milestones(user: CurrentUser, milestones: MilestoneServiceDep,
                     start: date | None = None, end: date | None = None) -> list[Milestone]:
     """Milestones of every open project you can see that overlap start..end (both optional)."""
     return milestones.list_visible_milestones(user, start, end)
+
+
+# Milestone templates. Declared before /milestones/{milestone_id} so "templates" isn't read as an ID.
+
+
+@router.get("/milestones/templates")
+def list_templates(user: CurrentUser, templates: MilestoneTemplateServiceDep, q: str | None = None,
+                   manager_id: str | None = None) -> list[MilestoneTemplate]:
+    """Your milestone templates (managers), or every template, optionally one manager's (admins)."""
+    return templates.list_templates(user, q=q, manager_id=manager_id)
+
+
+@router.post("/milestones/templates", status_code=status.HTTP_201_CREATED)
+def create_template(body: MilestoneTemplateCreate, user: CurrentUser,
+                    templates: MilestoneTemplateServiceDep) -> MilestoneTemplate:
+    """Managers create templates for themselves; admins pass the manager_id the template belongs to."""
+    return templates.create_template(user, body)
+
+
+@router.get("/milestones/templates/{template_id}")
+def get_template(template_id: int, user: CurrentUser, templates: MilestoneTemplateServiceDep) -> MilestoneTemplate:
+    return templates.get_template(user, template_id)
+
+
+@router.patch("/milestones/templates/{template_id}")
+def update_template(template_id: int, body: MilestoneTemplateUpdate, user: CurrentUser,
+                    templates: MilestoneTemplateServiceDep) -> MilestoneTemplate:
+    """milestones, when given, replace the template's whole list in that order."""
+    return templates.update_template(user, template_id, body)
+
+
+@router.delete("/milestones/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_template(template_id: int, user: CurrentUser, templates: MilestoneTemplateServiceDep) -> Response:
+    """Milestones already added to projects from the template are kept."""
+    templates.delete_template(user, template_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # Declared before /milestones/{milestone_id} so "active" isn't read as an ID

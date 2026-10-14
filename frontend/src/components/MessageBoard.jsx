@@ -12,12 +12,42 @@ import { ConfirmDialog, EmptyState, ErrorAlert, Loading } from './common'
 import { dateTime } from '../utils/format'
 
 /**
+ * The message board. `filterable` adds a picker to switch between all boards
+ * and one project's board, plus "Show older posts" (the home page uses this).
+ */
+export default function MessageBoard({ filterable = false, ...props }) {
+  return filterable ? <FilterableBoard {...props} /> : <Board {...props} />
+}
+
+function FilterableBoard({ limit: pageSize = 20, compact = false }) {
+  const directory = useDirectory()
+  const { isAdmin } = useRole()
+  const [boardId, setBoardId] = useState('')
+  const [limit, setLimit] = useState(pageSize)
+  const boards = directory.projects.filter((p) => !p.archived)
+  const allBoardsHelp = isAdmin ? 'Announcements and every project\'s board.' : 'Announcements to everyone, plus the boards of your projects.'
+  return (
+    <>
+      <TextField id="board-filter" select label="Show posts from" value={boardId} sx={{ mb: 2 }}
+        onChange={(e) => { setBoardId(e.target.value); setLimit(pageSize) }}
+        helperText={boardId ? 'Only this project\'s board. New posts go to this project.' : allBoardsHelp}
+        slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}>
+        <MenuItem value="">All boards</MenuItem>
+        {boards.map((p) => <MenuItem key={p.id} value={String(p.id)}>{p.name}</MenuItem>)}
+      </TextField>
+      <Board key={boardId || 'all'} projectId={boardId ? Number(boardId) : null} limit={limit} compact={compact}
+        onShowMore={() => setLimit((current) => current + pageSize)} />
+    </>
+  )
+}
+
+/**
  * Posts and the form to add one. With projectId it shows one project's board;
  * without, announcements plus the reader's projects' posts. Admins can post to
  * everyone or any project, managers to their own projects. Authors delete their
  * own posts; admins delete any.
  */
-export default function MessageBoard({ projectId = null, limit = 50, compact = false, readOnly = false }) {
+function Board({ projectId = null, limit = 50, compact = false, readOnly = false, onShowMore }) {
   const directory = useDirectory()
   const notify = useNotify()
   const { user } = useAuth()
@@ -129,6 +159,9 @@ export default function MessageBoard({ projectId = null, limit = 50, compact = f
             </ListItem>
           ))}
         </List>
+      )}
+      {onShowMore && data?.length >= limit && (
+        <Button size="small" onClick={onShowMore} sx={{ mt: 1, ml: -1 }}>Show older posts</Button>
       )}
 
       <ConfirmDialog

@@ -54,6 +54,13 @@ const routes = {
   ],
   'GET /api/projects/1/budget-estimate': { project_id: 1, estimated_cost: '240000.00' },
   'GET /api/milestones': [milestone, milestone2],
+  'GET /api/milestones/templates': [{
+    id: 7, name: 'Software release', description: 'Our usual plan', manager_id: 'MGR001', created_at: '2026-10-01T09:00:00Z', updated_at: '2026-10-01T09:00:00Z',
+    milestones: [
+      { id: 1, sequence: 1, title: 'Plan', description: null, duration_days: 10 },
+      { id: 2, sequence: 2, title: 'Build', description: 'Write the code', duration_days: null },
+    ],
+  }],
   'GET /api/milestones/10': milestone,
   'GET /api/milestones/10/tasks': [{ id: 100, milestone_id: 10, title: 'Unrack 250 servers', is_done: true, done_at: '2026-10-01T09:00:00Z', done_by: 'EMP001', created_at: '2026-09-01T09:00:00Z', updated_at: '2026-10-01T09:00:00Z' }],
   'GET /api/milestones/10/assignments': [{ id: 1, milestone_id: 10, project_id: 1, user_id: 'EMP001', assigned_at: '2026-09-02T09:00:00Z', finished_at: null }],

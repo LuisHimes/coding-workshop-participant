@@ -144,7 +144,7 @@ export function HoursChip({ hours, overLimit, label }) {
       size="small"
       color={overLimit ? 'warning' : 'default'}
       variant={overLimit ? 'filled' : 'outlined'}
-      label={`${label ? `${label} ` : ''}${Number(hours)} h/week${overLimit ? ' · over 40' : ''}`}
+      label={`${label ? `${label} ` : ''}${Number(hours)} h/week${overLimit ? ' · overtime' : ''}`}
     />
   )
 }

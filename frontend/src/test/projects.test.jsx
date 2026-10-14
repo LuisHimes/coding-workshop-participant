@@ -486,7 +486,7 @@ describe('project team', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Alan Turing (EMP002)' }))
     fireEvent.change(within(dialog).getByLabelText(/Planned hours per week/), { target: { value: '30' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add to project' }))
-    expect(await screen.findByText('Alan Turing is now planned for 50 h/week across their projects, more than a 40-hour week.')).toBeTruthy()
+    expect(await screen.findByText('Alan Turing is now planned for 50 h/week across their projects, which is overtime (more than 40 h a week).')).toBeTruthy()
     expect(lastBody('POST /api/projects/1/members')).toEqual({ user_id: 'EMP002', hours_per_week: '30' })
     await waitFor(() => expect(called('GET /api/projects/1/members')).toBe(2))
   })
@@ -520,7 +520,7 @@ describe('project team', () => {
     respond('GET /api/users', [...users, retired])
     respond('GET /api/projects/1/members', [member('EMP003', '10.0', 1), member('GONE01', '5.0', 2)])
     renderAt('/projects/1?tab=team')
-    expect(await screen.findByText('EMP003 · deactivated')).toBeTruthy()
+    expect(await screen.findByText('ID EMP003 · deactivated')).toBeTruthy()
     const unknownRow = screen.getAllByText('GONE01')[0].closest('tr')
     expect(within(unknownRow).getByText('—')).toBeTruthy()  // no job title
     fireEvent.click(within(unknownRow).getByLabelText('Change planned hours'))
@@ -547,7 +547,7 @@ describe('project team', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Night shift · Mia Manager · 3 members' }))
     fireEvent.change(within(dialog).getByLabelText(/Planned hours per week, each/), { target: { value: '10' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add team' }))
-    expect(await screen.findByText('Added 2 people; skipped 1 (already on the project or deactivated); over 40 h/week: Grace Hopper')).toBeTruthy()
+    expect(await screen.findByText('Added 2 people; skipped 1 (already on the project or deactivated); now in overtime (over 40 h/week): Grace Hopper')).toBeTruthy()
     expect(lastBody('POST /api/projects/1/teams')).toEqual({ team_id: 6, hours_per_week: '10' })
   })
 
@@ -1006,11 +1006,13 @@ describe('project progress bar', () => {
     renderAt('/projects/1')
     const bar = await screen.findByRole('img', { name: /^Decommission 1000 servers: 1 of 2 milestones done · 100% of timeline used · 1 overdue/ })
     expect(bar.getAttribute('aria-label')).toContain('Q1: 250 servers completed, Q2: 500 servers overdue')
-    expect(bar.textContent).toBe('1')
+    expect(bar.textContent).toBe('Q1: 250 servers')  // segments show their milestone's name; Q2 is too short to label
     expect(screen.getByText('Completed')).toBeTruthy()
     expect(screen.queryByText('Today')).toBeNull()
     expect(screen.queryByText('In progress')).toBeNull()  // the legend lists only states in use
-    expect(screen.getByText('Sep 1, 2026 – Aug 31, 2027')).toBeTruthy()
+    expect(screen.getByText('Hover over a milestone for its full name, dates and status.')).toBeTruthy()
+    // Ticks at the start, at each milestone's start and at the end; the year shows when it changes
+    expect(screen.getAllByTestId('timeline-tick').map((t) => t.textContent)).toEqual(['Sep 1, 2026', 'Jan 1, 2027', 'Aug 31'])
   })
 
   it('stretches to milestones outside the project dates and hides the today marker before the start', async () => {
@@ -1018,7 +1020,7 @@ describe('project progress bar', () => {
     respond('GET /api/projects/1/milestones', [{ ...m2, start_date: '2026-08-01', end_date: '2027-09-30' }])
     renderAt('/projects/1')
     expect(await screen.findByText('0 of 1 milestones done · 0% of timeline used')).toBeTruthy()
-    expect(screen.getByText('Aug 1, 2026 – Sep 30, 2027')).toBeTruthy()
+    expect(screen.getAllByTestId('timeline-tick').map((t) => t.textContent)).toEqual(['Aug 1, 2026', 'Sep 30, 2027'])
     expect(screen.queryByText('Today')).toBeNull()
   })
 
@@ -1029,6 +1031,21 @@ describe('project progress bar', () => {
     expect(await screen.findByRole('img', { name: 'Decommission 1000 servers: No milestones yet.' })).toBeTruthy()
     expect(screen.getByText('No milestones yet')).toBeTruthy()
     expect(screen.getByText('Today')).toBeTruthy()
+    expect(screen.queryByText(/Hover over a milestone/)).toBeNull()
+    expect(screen.getAllByTestId('timeline-tick').map((t) => t.textContent)).toEqual(['Sep 1, 2026', 'Aug 31, 2027'])
+  })
+
+  it('skips date labels that would crowd each other, keeping the end date', async () => {
+    onDay('2026-10-14')
+    respond('GET /api/projects/1/milestones', [
+      { ...m1, start_date: '2026-09-01', end_date: '2026-09-10' },
+      { ...m2, start_date: '2026-09-11', end_date: '2027-08-25' },  // starts too close to the first label
+      { ...m2, id: 12, sequence: 3, title: 'Wrap up', start_date: '2027-08-26', end_date: '2027-08-31' },  // too close to the end
+    ])
+    renderAt('/projects/1')
+    await screen.findByText(/0 of 3 milestones done/)
+    const ticks = screen.getAllByTestId('timeline-tick').map((t) => t.textContent)
+    expect(ticks).toEqual(['Sep 1, 2026', '', '', 'Aug 31, 2027'])  // every tick is drawn; only some are labelled
   })
 })
 
