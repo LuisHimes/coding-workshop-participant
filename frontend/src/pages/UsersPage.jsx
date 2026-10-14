@@ -13,10 +13,13 @@ import { users as usersApi } from '../api/endpoints'
 import { useAuth, useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
+import { useSort } from '../hooks/useSort'
 import { useDirectory } from '../context/DirectoryContext'
 import { useNotify } from '../context/NotificationsContext'
 import FormDialog from '../components/FormDialog'
-import { ConfirmDialog, EmptyState, ErrorAlert, Loading, PageHeader, RoleChip, ScrollingTable, UserPicker } from '../components/common'
+import {
+  ConfirmDialog, EmptyState, ErrorAlert, Loading, PageHeader, RoleChip, ScrollingTable, SortableCell, UserPicker,
+} from '../components/common'
 import { ROLE_LABELS, fullName, money } from '../utils/format'
 
 const EMPTY_USER = { role: 'employee', first_name: '', last_name: '', email: '', job_title: '', salary: '', manager_id: null, temporary_password: '' }
@@ -122,6 +125,12 @@ function userRequestBody(form) {
  * click a row to edit, deactivate or reset a password; managers ("Employees") get a read-only list
  * for staffing projects and teams.
  */
+/** A user's account status as shown in the table. */
+function accountStatus(user) {
+  if (!user.is_active) return 'Deactivated (can\'t log in)'
+  return user.must_change_password ? 'Hasn\'t logged in yet' : 'Active'
+}
+
 export default function UsersPage() {
   const { user: me } = useAuth()
   const { isAdmin } = useRole()
@@ -136,6 +145,12 @@ export default function UsersPage() {
     () => usersApi.list({ q: search || undefined, role: role || undefined, manager_id: managerId || undefined, include_inactive: includeInactive }),
     [search, role, managerId, includeInactive],
   )
+  // Managers can't look up other managers, so those names stay hidden
+  const managerName = (u) => (!u.manager_id ? null : directory.user(u.manager_id) ? directory.userName(u.manager_id) : 'Another manager')
+  const sorting = useSort(data, {
+    name: fullName, role: (u) => ROLE_LABELS[u.role], manager: managerName, status: accountStatus,
+    salary: (u) => (u.salary === null ? null : Number(u.salary)),
+  })
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_USER)
@@ -181,17 +196,17 @@ export default function UsersPage() {
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
+                  <SortableCell label="Name" sortKey="name" sorting={sorting} />
                   <TableCell>User ID</TableCell>
-                  <TableCell>Role</TableCell>
+                  <SortableCell label="Role" sortKey="role" sorting={sorting} />
                   <TableCell>Job title</TableCell>
-                  <TableCell>Manager</TableCell>
-                  <TableCell align="right">Salary</TableCell>
-                  <TableCell>Status</TableCell>
+                  <SortableCell label="Manager" sortKey="manager" sorting={sorting} />
+                  <SortableCell label="Salary" sortKey="salary" sorting={sorting} align="right" />
+                  <SortableCell label="Status" sortKey="status" sorting={sorting} />
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data?.map((u) => (
+                {sorting.sorted?.map((u) => (
                   <TableRow key={u.id} hover={isAdmin} sx={{ cursor: isAdmin ? 'pointer' : 'default', opacity: u.is_active ? 1 : 0.6 }}
                     onClick={() => {
                       if (!isAdmin) return
@@ -205,14 +220,9 @@ export default function UsersPage() {
                     <TableCell sx={{ fontFamily: 'monospace' }}>{u.id}</TableCell>
                     <TableCell><RoleChip role={u.role} /></TableCell>
                     <TableCell>{u.job_title}</TableCell>
-                    <TableCell>
-                      {/* Managers can't look up other managers; their names stay hidden */}
-                      {!u.manager_id ? '—' : directory.user(u.manager_id) ? directory.userName(u.manager_id) : 'Another manager'}
-                    </TableCell>
+                    <TableCell>{managerName(u) ?? '—'}</TableCell>
                     <TableCell align="right">{money(u.salary)}</TableCell>
-                    <TableCell>
-                      {!u.is_active ? 'Deactivated (can\'t log in)' : u.must_change_password ? 'Hasn\'t logged in yet' : 'Active'}
-                    </TableCell>
+                    <TableCell>{accountStatus(u)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

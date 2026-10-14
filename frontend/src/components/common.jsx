@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import {
   Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogContentText, DialogTitle, Stack, TableContainer, TextField, Tooltip, Typography,
+  DialogContentText, DialogTitle, Stack, TableCell, TableContainer, TableSortLabel, TextField, Tooltip, Typography,
 } from '@mui/material'
 import {
   MILESTONE_STATUS_LABELS, PROJECT_STATUS_LABELS, RISK_LABELS, ROLE_LABELS, fullName,
@@ -20,6 +20,20 @@ export function ScrollingTable({ label, children }) {
       sx={{ maxHeight: 'max(360px, calc(100vh - 340px))', '&:focus-visible': { outline: 2, outlineColor: 'primary.main', outlineOffset: -2 } }}>
       {children}
     </TableContainer>
+  )
+}
+
+/**
+ * A column heading that sorts the table when clicked (again to reverse), with an arrow on the sorted column.
+ * `sorting` is what useSort returns; screen readers hear the sort order through aria-sort.
+ */
+export function SortableCell({ label, sortKey, sorting, align, sx }) {
+  const active = sorting.sort?.key === sortKey
+  const direction = active ? sorting.sort.direction : 'asc'
+  return (
+    <TableCell align={align} sx={sx} sortDirection={active ? direction : false}>
+      <TableSortLabel active={active} direction={direction} onClick={() => sorting.toggle(sortKey)}>{label}</TableSortLabel>
+    </TableCell>
   )
 }
 

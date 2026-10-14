@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Button, Card, InputAdornment, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow,
+  Button, Card, InputAdornment, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel,
   TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
@@ -12,8 +12,9 @@ import { milestones as milestonesApi, projects as projectsApi } from '../api/end
 import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
+import { useSort } from '../hooks/useSort'
 import { useDirectory } from '../context/DirectoryContext'
-import { EmptyState, ErrorAlert, Loading, PageHeader, ProjectStatusChip, ScrollingTable } from '../components/common'
+import { EmptyState, ErrorAlert, Loading, PageHeader, ProjectStatusChip, ScrollingTable, SortableCell } from '../components/common'
 import ProjectFormDialog from '../components/ProjectFormDialog'
 import ProjectProgressBar from '../components/ProjectProgressBar'
 import { PROJECT_STATUS_LABELS, day, hours, money } from '../utils/format'
@@ -42,6 +43,19 @@ export default function ProjectsPage() {
   // One call for every open project's milestones, grouped for the progress bars
   const milestones = useApiData(() => milestonesApi.list({}), [])
   const milestonesByProject = Map.groupBy(milestones.data || [], (m) => m.project_id)
+  /** Share of a project's milestones that are completed (projects without milestones count as 0). */
+  const progress = (project) => {
+    const list = milestonesByProject.get(project.id) || []
+    return list.length ? list.filter((m) => m.status === 'completed').length / list.length : 0
+  }
+  const sorting = useSort(data, {
+    name: (p) => p.name,
+    status: (p) => `${PROJECT_STATUS_LABELS[p.status]}${p.archived ? ' (archived)' : ''}`,
+    progress, due: (p) => p.projected_end_date,
+    manager: (p) => directory.userName(p.manager_id),
+    allocated: (p) => p.allocated_hours,
+    budget: (p) => Number(p.budget),
+  })
 
   return (
     <>
@@ -85,21 +99,31 @@ export default function ProjectsPage() {
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell sx={{ width: 140 }}>Status</TableCell>
-                  <TableCell sx={{ width: 220 }}>Progress and dates</TableCell>
-                  <TableCell>Manager</TableCell>
-                  <TableCell align="right">Allocated</TableCell>
-                  {!isEmployee && <TableCell align="right">Budget</TableCell>}
+                  <SortableCell label="Name" sortKey="name" sorting={sorting} />
+                  <SortableCell label="Status" sortKey="status" sorting={sorting} sx={{ width: 140 }} />
+                  {/* One column shows both, so it sorts either way: by milestones done, or by due date */}
+                  <TableCell sx={{ width: 220 }}
+                    sortDirection={['progress', 'due'].includes(sorting.sort?.key) ? sorting.sort.direction : false}>
+                    {/* Stacked, so the two sort controls don't widen the column */}
+                    {[['progress', 'Progress'], ['due', 'Due date']].map(([key, label]) => (
+                      <span key={key} style={{ display: 'block' }}>
+                        <TableSortLabel active={sorting.sort?.key === key} direction={sorting.sort?.key === key ? sorting.sort.direction : 'asc'}
+                          onClick={() => sorting.toggle(key)}>{label}</TableSortLabel>
+                      </span>
+                    ))}
+                  </TableCell>
+                  <SortableCell label="Manager" sortKey="manager" sorting={sorting} />
+                  <SortableCell label="Allocated" sortKey="allocated" sorting={sorting} align="right" />
+                  {!isEmployee && <SortableCell label="Budget" sortKey="budget" sorting={sorting} align="right" />}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data?.map((project) => (
+                {sorting.sorted?.map((project) => (
                   <TableRow key={project.id} hover onClick={() => navigate(`/projects/${project.id}`)} sx={{ cursor: 'pointer' }}>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>{project.name}</Typography>
                       {project.description && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 280 }} noWrap>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 240 }} noWrap>
                           {project.description}
                         </Typography>
                       )}

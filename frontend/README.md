@@ -11,7 +11,7 @@ It covers every admin, manager and employee feature. Each screen shows only what
 | Screen          | What admins can do                                                                                   |
 | --------------- | ---------------------------------------------------------------------------------------------------- |
 | Dashboard       | Open, at-risk and off-track projects, employees in overtime, labor cost against budget (each number explained), project status table, and the message board with a filter for all boards or one project |
-| Projects        | Search and filter (status, open or archived); long lists scroll with the headings kept in view; each open project's progress bar; create projects with a manager, dates, hours and budget |
+| Projects        | Search and filter (status, open or archived); long lists scroll with the headings kept in view; click any heading to sort; each open project's progress bar; create projects with a manager, dates, hours and budget |
 | Calendar        | Month view of key dates only: project kickoffs and deadlines, milestone starts and deadlines (deadlines colored by status, overdue in red); busy days show three and "+N more"; filter by project; a scrolling list of the month's key dates |
 | Project page    | Progress bar (milestones placed on the timeline by state, with today marked); edit everything including budget and manager; delete (archives it, kept for history); unarchive; budget estimate with "Use as budget"; health and deadline risk |
 | · Team          | Add employees with planned hours (warns above 40 h/week), add a whole team, change hours, remove     |
@@ -19,12 +19,12 @@ It covers every admin, manager and employee feature. Each screen shows only what
 | · Deliverables  | The dependency chain: order, what each milestone waits on, progress and assignees                    |
 | · Hours         | Hours logged on the project, with corrections and deletes                                             |
 | · Message board | The project's posts                                                                                   |
-| Users           | Search and filter; create users (shows the generated ID and temporary password once); edit role, title, salary, manager and status; reset passwords |
+| Users           | Search and filter; create users (shows the generated ID and temporary password once); edit role, title, salary, manager and status; reset passwords; sort by name, role, manager, salary or status |
 | Teams           | Create a team for a manager; add or remove their direct reports; rename; delete                      |
 | Milestone templates | A manager's predefined milestones (in order, with an optional usual length); create, edit, reorder, delete. On a project's Milestones tab, "Add from template" adds them with suggested dates you can change |
-| Reports         | Project status, at-risk projects with reasons, budget consumed versus planned, resource allocation and over-allocation (filter by team) |
-| Hours           | Every time entry, filtered by employee, project and dates; corrections and deletes                   |
-| Audit log       | Every change and login, filtered by record type, record, user and date; changes shown as old → new    |
+| Reports         | Project status, at-risk projects with reasons, budget consumed versus planned, resource allocation and over-allocation (filter by team); every table sorts by any column |
+| Hours           | Every time entry, filtered by employee, project and dates; corrections and deletes; sort by any column |
+| Audit log       | Every change and login, filtered by record type, record, user and date; changes shown as old → new; sort by any column |
 | Your profile    | Edit name and email; change password                                                                  |
 
 Every screen, including login, has an **Appearance** button in the top bar: light or dark mode follows the browser's setting until someone picks Light or Dark, which is remembered in that browser.

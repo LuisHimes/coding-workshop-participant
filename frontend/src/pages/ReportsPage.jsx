@@ -8,10 +8,16 @@ import {
 import { reports, teams as teamsApi } from '../api/endpoints'
 import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
+import { useSort } from '../hooks/useSort'
 import { useDirectory } from '../context/DirectoryContext'
-import { EmptyState, ErrorAlert, HoursChip, Loading, PageHeader, RiskChip, ScrollingTable } from '../components/common'
+import {
+  EmptyState, ErrorAlert, HoursChip, Loading, PageHeader, RiskChip, ScrollingTable, SortableCell,
+} from '../components/common'
 import ProjectHealthTable from '../components/ProjectHealthTable'
 import { day, hours, money, percent } from '../utils/format'
+
+/** An optional decimal string ("12.5") as a number, or null when missing. */
+const asNumber = (v) => (v === null || v === undefined ? null : Number(v))
 
 const TABS = {
   projects: 'Project status',
@@ -78,6 +84,11 @@ function AtRiskReport() {
 /** Budget, estimated cost, labor cost so far and hours for each open project. */
 function BudgetReport() {
   const { data, error, loading, reload } = useApiData(() => reports.budget(), [])
+  const sorting = useSort(data, {
+    name: (b) => b.name, budget: (b) => Number(b.budget), estimate: (b) => Number(b.estimated_cost), laborCost: (b) => Number(b.labor_cost),
+    remaining: (b) => Number(b.budget_remaining), used: (b) => asNumber(b.budget_used_pct), completion: (b) => Number(b.completion_pct),
+    logged: (b) => Number(b.logged_hours),
+  })
   return (
     <Card>
       <ErrorAlert error={error} onRetry={reload} />
@@ -86,18 +97,18 @@ function BudgetReport() {
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell>Project</TableCell>
-                <TableCell align="right">Budget</TableCell>
-                <TableCell align="right">Estimated cost</TableCell>
-                <TableCell align="right">Labor cost so far</TableCell>
-                <TableCell align="right">Remaining</TableCell>
-                <TableCell align="right">Budget used</TableCell>
-                <TableCell align="right">Milestones done</TableCell>
-                <TableCell align="right">Hours logged</TableCell>
+                <SortableCell label="Project" sortKey="name" sorting={sorting} />
+                <SortableCell label="Budget" sortKey="budget" sorting={sorting} align="right" />
+                <SortableCell label="Estimated cost" sortKey="estimate" sorting={sorting} align="right" />
+                <SortableCell label="Labor cost so far" sortKey="laborCost" sorting={sorting} align="right" />
+                <SortableCell label="Remaining" sortKey="remaining" sorting={sorting} align="right" />
+                <SortableCell label="Budget used" sortKey="used" sorting={sorting} align="right" />
+                <SortableCell label="Milestones done" sortKey="completion" sorting={sorting} align="right" />
+                <SortableCell label="Hours logged" sortKey="logged" sorting={sorting} align="right" />
               </TableRow>
             </TableHead>
             <TableBody>
-              {data?.map((b) => (
+              {sorting.sorted?.map((b) => (
                 <TableRow key={b.project_id}>
                   <TableCell>
                     <Link component={RouterLink} to={`/projects/${b.project_id}`} underline="hover" sx={{ fontWeight: 600 }}>{b.name}</Link>
@@ -137,6 +148,10 @@ function AllocationReport({ overAllocatedOnly }) {
     [overAllocatedOnly, teamId],
   )
   const tab = overAllocatedOnly ? 'overtime' : 'allocation'
+  const sorting = useSort(data, {
+    name: (a) => `${a.first_name} ${a.last_name}`, manager: (a) => directory.userName(a.manager_id),
+    planned: (a) => Number(a.hours_per_week), projects: (a) => a.projects.length, logged: (a) => Number(a.last_week_logged_hours),
+  })
 
   return (
     <Card>
@@ -160,15 +175,15 @@ function AllocationReport({ overAllocatedOnly }) {
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell>Employee</TableCell>
-                <TableCell>Manager</TableCell>
-                <TableCell>Planned</TableCell>
-                <TableCell>Projects</TableCell>
-                <TableCell align="right">Logged last week</TableCell>
+                <SortableCell label="Employee" sortKey="name" sorting={sorting} />
+                <SortableCell label="Manager" sortKey="manager" sorting={sorting} />
+                <SortableCell label="Planned" sortKey="planned" sorting={sorting} />
+                <SortableCell label="Projects" sortKey="projects" sorting={sorting} />
+                <SortableCell label="Logged last week" sortKey="logged" sorting={sorting} align="right" />
               </TableRow>
             </TableHead>
             <TableBody>
-              {data?.map((a) => (
+              {sorting.sorted?.map((a) => (
                 <TableRow key={a.user_id}>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.first_name} {a.last_name}</Typography>

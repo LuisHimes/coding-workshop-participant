@@ -10,9 +10,10 @@ import { timeEntries as timeEntriesApi } from '../api/endpoints'
 import { useDirectory } from '../context/DirectoryContext'
 import { useNotify } from '../context/NotificationsContext'
 import FormDialog from './FormDialog'
-import { ConfirmDialog, EmptyState, ScrollingTable } from './common'
+import { ConfirmDialog, EmptyState, ScrollingTable, SortableCell } from './common'
 import { day, hours } from '../utils/format'
 import { useRole } from '../context/AuthContext'
+import { useSort } from '../hooks/useSort'
 
 /**
  * Logged hours with a total row. `showProject` adds the project column; `editable` adds
@@ -28,6 +29,10 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [form, setForm] = useState({})
+  const sorting = useSort(entries, {
+    date: (e) => e.work_date, employee: (e) => directory.userName(e.user_id), project: (e) => directory.projectName(e.project_id),
+    description: (e) => e.description, hours: (e) => Number(e.hours),
+  })
 
   if (!entries.length) return <EmptyState title="No hours logged">Hours appear here once employees log them.</EmptyState>
   const total = entries.reduce((sum, e) => sum + Number(e.hours), 0)
@@ -38,16 +43,16 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell>Date</TableCell>
-              {showEmployee && <TableCell>Employee</TableCell>}
-              {showProject && <TableCell>Project</TableCell>}
-              <TableCell>Description</TableCell>
-              <TableCell align="right">Hours</TableCell>
+              <SortableCell label="Date" sortKey="date" sorting={sorting} />
+              {showEmployee && <SortableCell label="Employee" sortKey="employee" sorting={sorting} />}
+              {showProject && <SortableCell label="Project" sortKey="project" sorting={sorting} />}
+              <SortableCell label="Description" sortKey="description" sorting={sorting} />
+              <SortableCell label="Hours" sortKey="hours" sorting={sorting} align="right" />
               {editable && <TableCell align="right">Actions</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
-            {entries.map((entry) => (
+            {sorting.sorted.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{day(entry.work_date)}</TableCell>
                 {showEmployee && <TableCell>{directory.userName(entry.user_id)}</TableCell>}

@@ -7,9 +7,10 @@ import {
 } from '@mui/material'
 import { audit as auditApi } from '../api/endpoints'
 import { useApiData } from '../hooks/useApiData'
+import { useSort } from '../hooks/useSort'
 import { useDebounced } from '../hooks/useDebounced'
 import { useDirectory } from '../context/DirectoryContext'
-import { EmptyState, ErrorAlert, Loading, PageHeader, ScrollingTable, UserPicker } from '../components/common'
+import { EmptyState, ErrorAlert, Loading, PageHeader, ScrollingTable, SortableCell, UserPicker } from '../components/common'
 import { dateTime } from '../utils/format'
 
 // Backend table names -> labels for the "What changed" filter and the Record column
@@ -48,6 +49,13 @@ function summarize(record) {
   if (record.hours) return `${record.hours} h on ${record.work_date}`
   if (record.user_id) return `User ${record.user_id}`
   return null
+}
+
+/** The text an entry's details sort by: the changed fields for an update, otherwise its one-line summary. */
+function detailsText(entry) {
+  if (!entry.changes) return null
+  if (entry.action === 'UPDATE') return Object.keys(entry.changes).filter((key) => !HIDDEN_FIELDS.has(key)).join(', ')
+  return summarize(entry.changes)
 }
 
 /**
@@ -102,10 +110,15 @@ export default function AuditPage() {
     }),
     [filters.entity, entityId, filters.actor_id, filters.since, filters.limit],
   )
+  const actorName = (entry) => (entry.actor_id ? directory.userName(entry.actor_id) : 'System')
+  const recordName = (entry) => `${ENTITIES[entry.entity] ?? entry.entity}${entry.entity_id ? ` #${entry.entity_id}` : ''}`
+  const sorting = useSort(data, {
+    when: (e) => e.occurred_at, who: actorName, action: (e) => ACTION_LABELS[e.action] ?? e.action, record: recordName, details: detailsText,
+  })
 
   return (
     <>
-      <PageHeader title="Audit log" subtitle="Every change and login: what was done, by whom, and when. Newest first." />
+      <PageHeader title="Audit log" subtitle="Every change and login: what was done, by whom, and when. Newest first; click a column heading to sort." />
       <Card>
         <Stack direction="row" spacing={2} sx={{ p: 2 }}>
           <TextField id="audit-entity" select label="What changed" value={filters.entity} sx={{ maxWidth: 220 }} slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
@@ -131,20 +144,20 @@ export default function AuditPage() {
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell>When</TableCell>
-                  <TableCell>Who</TableCell>
-                  <TableCell>Action</TableCell>
-                  <TableCell>Record</TableCell>
-                  <TableCell>Details</TableCell>
+                  <SortableCell label="When" sortKey="when" sorting={sorting} />
+                  <SortableCell label="Who" sortKey="who" sorting={sorting} />
+                  <SortableCell label="Action" sortKey="action" sorting={sorting} />
+                  <SortableCell label="Record" sortKey="record" sorting={sorting} />
+                  <SortableCell label="Details" sortKey="details" sorting={sorting} />
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data?.map((entry) => (
+                {sorting.sorted?.map((entry) => (
                   <TableRow key={entry.id} sx={{ verticalAlign: 'top' }}>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{dateTime(entry.occurred_at)}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{entry.actor_id ? directory.userName(entry.actor_id) : 'System'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{actorName(entry)}</TableCell>
                     <TableCell><Chip size="small" label={ACTION_LABELS[entry.action] ?? entry.action} color={ACTION_COLORS[entry.action] ?? 'default'} /></TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{ENTITIES[entry.entity] ?? entry.entity} {entry.entity_id && `#${entry.entity_id}`}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{recordName(entry)}</TableCell>
                     <TableCell sx={{ minWidth: 260 }}><Changes entry={entry} /></TableCell>
                   </TableRow>
                 ))}
