@@ -1,3 +1,5 @@
+/** App shell for logged-in users: side navigation per role, top bar and page area. */
+
 import { Suspense, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
@@ -13,8 +15,8 @@ import ViewTimelineIcon from '@mui/icons-material/ViewTimeline'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import HistoryIcon from '@mui/icons-material/History'
-import { useAuth } from '../auth/AuthContext'
-import { ColorModeButton } from './ColorMode'
+import { useAuth } from '../context/AuthContext'
+import { ColorModeButton } from './ColorModeButton'
 import { ROLE_LABELS } from '../utils/format'
 import { Loading } from './common'
 
@@ -44,6 +46,7 @@ const EMPLOYEE_NAV = [
 ]
 const NAV_BY_ROLE = { admin: ADMIN_NAV, manager: MANAGER_NAV, employee: EMPLOYEE_NAV }
 
+/** The side menu's links; the current screen's link is highlighted. */
 function Navigation({ items }) {
   return (
     <List component="nav" sx={{ px: 1 }}>
@@ -67,6 +70,10 @@ function Navigation({ items }) {
   )
 }
 
+/**
+ * The frame around every logged-in screen: side menu (its links depend on the
+ * role), top bar with the appearance and account menus, and the current screen.
+ */
 export default function Layout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()

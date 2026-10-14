@@ -31,12 +31,12 @@ All features share one database, settings and login: a token from `/api/auth/tok
 
 The service is split into layers. A request flows controller → service → repository → database, and each layer only calls the one below it.
 
-| Layer         | Responsibility                                                                 |
-| ------------- | ------------------------------------------------------------------------------ |
-| `controller/` | HTTP: routes, status codes, request validation, choosing the response schema    |
-| `service/`    | Business rules: who may do what, salary visibility, password hashing           |
-| `repository/` | SQL only: one module per model, no permission checks                           |
-| `models/`     | Table definitions, database rules (triggers), views and Pydantic schemas       |
+| Layer           | Responsibility                                                                 |
+| --------------- | ------------------------------------------------------------------------------ |
+| `controllers/`  | HTTP: routes, status codes, request validation, choosing the response schema    |
+| `services/`     | Business rules: who may do what, salary visibility, password hashing           |
+| `repositories/` | SQL only: one module per model, no permission checks                           |
+| `models/`       | Table definitions, database rules (triggers), views and Pydantic schemas       |
 
 ```
 _shared/
@@ -50,7 +50,7 @@ _shared/
 ├── database.py          # Reused connection, schema setup, migration runner
 ├── migrations/          # Numbered SQL migrations for existing databases
 ├── dependencies.py      # Dependency injection: builds repositories (and services) per request
-├── controller/          # HTTP layer: routes, status codes, request validation
+├── controllers/         # HTTP layer: routes, status codes, request validation
 │   ├── auth.py          #   Login, your profile, change password
 │   ├── health.py        #   Health checks
 │   ├── users.py         #   /users
@@ -61,7 +61,7 @@ _shared/
 │   ├── reports.py       #   /reports
 │   ├── teams.py         #   /teams, add a team to a project
 │   └── audit.py         #   /audit
-├── service/             # Business rules and permissions; calls repositories
+├── services/            # Business rules and permissions; calls repositories
 │   ├── base.py          #   Role helpers (is_admin, require_role, ...)
 │   ├── errors.py        #   NotFound / PermissionDenied / Conflict / InvalidRequest
 │   ├── auth.py          #   Login, change password, first admin
@@ -73,14 +73,17 @@ _shared/
 │   ├── messages.py      #   Message board
 │   ├── audit.py         #   Reading the audit log
 │   ├── reports.py       #   Status, risk, allocation, deliverables, budget, home pages
+│   ├── milestone_templates.py # Reusable milestone templates
 │   └── teams.py         #   Teams of direct reports, staffing projects with a team
-├── repository/          # SQL queries, one module per model
+├── repositories/        # SQL queries, one module per model
 │   ├── base.py          #   Repository base class: takes the connection, shared CRUD helpers
 │   ├── users.py         #   Never returns password_hash except for login checks
 │   ├── projects.py      #   Projects, members, archive/unarchive
 │   ├── milestones.py    #   Milestones, tasks, assignments, active milestone
 │   ├── time_entries.py
 │   ├── messages.py
+│   ├── milestone_templates.py
+│   ├── teams.py
 │   ├── audit.py         #   Read-only audit log queries
 │   └── dashboard.py     #   Reporting view queries
 ├── models/              # Table definitions, triggers, views and Pydantic schemas
@@ -90,22 +93,31 @@ _shared/
 │   ├── milestones.py    #   Milestones, their tasks and assigned employees
 │   ├── time_entries.py  #   Hours logged by employees
 │   ├── messages.py      #   Home page message board
+│   ├── milestone_templates.py # Reusable milestone templates
+│   ├── teams.py         #   Teams of a manager's direct reports
 │   ├── audit.py         #   Audit log and triggers
 │   ├── auth.py          #   Token response schema
 │   └── dashboard.py     #   Reporting views
-├── test_app.py          # Feature apps, path mapping, feature folders and sync tests
-├── test_middleware.py   # Logging, security header and exception handler tests
-├── test_models.py       # Database rule tests against PostgreSQL
-├── test_repository.py   # Repository tests against PostgreSQL
-├── test_dependencies.py # Dependency injection tests
-├── test_config.py       # Configuration loading tests
-├── test_migrations.py   # Migration runner and migration tests
-├── test_indexes.py      # Checks important queries can use their indexes
-├── test_teams.py        # Team rules, service and routes
-├── test_auth.py         # Login, token, password and role guard tests
-├── test_services.py     # Business rule and permission tests for every service
-├── test_controllers.py  # End-to-end API tests through HTTP
-├── conftest.py          # Test fixture: a temporary schema per test
+├── tests/               # pytest suite (pytest.ini sets testpaths and pythonpath)
+│   ├── conftest.py          # Test fixture: a temporary schema per test
+│   ├── test_app.py          # Feature apps, path mapping, feature folders and sync tests
+│   ├── test_sync.py         # sync.py: copying, stale file cleanup, bytecode
+│   ├── test_middleware.py   # Logging, security header and exception handler tests
+│   ├── test_models.py       # Database rule tests against PostgreSQL
+│   ├── test_repository.py   # Repository tests against PostgreSQL
+│   ├── test_database.py     # Connection reuse, reconnecting and the get_db dependency
+│   ├── test_dependencies.py # Dependency injection tests
+│   ├── test_config.py       # Configuration loading tests
+│   ├── test_errors.py       # Database rule violations turned into service errors
+│   ├── test_migrations.py   # Migration runner and migration tests
+│   ├── test_indexes.py      # Checks important queries can use their indexes
+│   ├── test_milestone_templates.py # Milestone template rules, service and routes
+│   ├── test_teams.py        # Team rules, service and routes
+│   ├── test_auth.py         # Login, token, password and role guard tests
+│   ├── test_services.py     # Business rule and permission tests for every service
+│   └── test_controllers.py  # End-to-end API tests through HTTP
+├── pytest.ini           # Test discovery (tests/) and import path (this folder)
+├── .coveragerc          # Coverage settings: 100% line and branch coverage required
 ├── requirements.txt     # Lambda dependencies (installed by Terraform)
 └── requirements-dev.txt # Local tooling: uvicorn, pytest, pytest-cov, httpx2
 ```
@@ -204,7 +216,7 @@ The dependency also tells the audit log who is acting, so every change made in t
 
 ## Services
 
-Each service method takes the acting user (from `CurrentUser`) as its first argument and checks permissions itself, so the rules hold whichever controller calls it. Services raise errors from [service/errors.py](service/errors.py). Business rules the database enforces (milestone order, one active milestone, ...) come back as conflicts with the database's own explanation.
+Each service method takes the acting user (from `CurrentUser`) as its first argument and checks permissions itself, so the rules hold whichever controller calls it. Services raise errors from [services/errors.py](services/errors.py). Business rules the database enforces (milestone order, one active milestone, ...) come back as conflicts with the database's own explanation.
 
 | Role     | Can                                                                                                           |
 | -------- | ------------------------------------------------------------------------------------------------------------- |
@@ -236,7 +248,7 @@ FastAPI still handles its own errors: 422 for invalid input, 401 and 404 for unk
 
 ### Reports
 
-[service/reports.py](service/reports.py) answers the platform's key questions:
+[services/reports.py](services/reports.py) answers the platform's key questions:
 
 | Question                                               | Method                | Who                        |
 | ------------------------------------------------------ | --------------------- | -------------------------- |
@@ -361,7 +373,7 @@ To change the schema:
 
 1. Change the model's `SCHEMA` SQL so fresh databases get the new shape.
 2. Add `migrations/NNN_short_description.sql` (the next number, three digits) that changes an existing database to match. Name new constraints explicitly so later migrations can refer to them.
-3. Add a test in [test_migrations.py](test_migrations.py) that rebuilds the old shape, runs `create_schema`, and checks the result.
+3. Add a test in [tests/test_migrations.py](tests/test_migrations.py) that rebuilds the old shape, runs `create_schema`, and checks the result.
 
 Migrations never run in reverse. To undo one, add a new migration.
 
@@ -371,10 +383,10 @@ Using `teams` as an example:
 
 1. `models/teams.py`: add a `SCHEMA` SQL string (idempotent: `CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE ...`) and Pydantic schemas. A brand-new table needs no migration; changes to existing tables do (see [Migrations](#migrations)).
 2. Add it to `SCHEMA` in `database.py`, after the tables it references, and to `AUDITED_TABLES` in `models/audit.py`.
-3. `repository/teams.py`: add a `TeamRepository(Repository)` class with the SQL queries.
-4. `service/teams.py`: add a `TeamService` class that takes the repositories it needs in its constructor.
+3. `repositories/teams.py`: add a `TeamRepository(Repository)` class with the SQL queries.
+4. `services/teams.py`: add a `TeamService` class that takes the repositories it needs in its constructor.
 5. `dependencies.py`: add providers for both, with `TeamRepositoryDep` and `TeamServiceDep` aliases.
-6. `controller/teams.py`: add a router whose routes all start with `/teams` and take `TeamServiceDep`.
+6. `controllers/teams.py`: add a router whose routes all start with `/teams` and take `TeamServiceDep`.
 7. Add the router to `FEATURES` in `app.py` under the key `"teams"`.
 8. Create `backend/teams/` with a `function.py` calling `create_app("teams")` (copy another feature's), plus its `.gitignore`, then run `python3 backend/_shared/sync.py`. The next deploy creates the Lambda and its `/api/teams` route.
 

@@ -13,10 +13,10 @@ import importlib
 
 from fastapi import APIRouter, FastAPI
 
-from controller import health
+from controllers import health
 from middleware import add_middleware
 
-# Feature name -> its module in controller/. Controllers are imported only when
+# Feature name -> its module in controllers/. Controllers are imported only when
 # their feature is built, so each Lambda loads just its own on a cold start.
 FEATURES: dict[str, str] = {
     "auth": "auth",
@@ -32,7 +32,8 @@ FEATURES: dict[str, str] = {
 
 
 def feature_router(feature: str) -> APIRouter:
-    return importlib.import_module(f"controller.{FEATURES[feature]}").router
+    """Imports the feature's controller module and returns its router."""
+    return importlib.import_module(f"controllers.{FEATURES[feature]}").router
 
 
 def create_app(feature: str | None = None) -> FastAPI:
@@ -60,6 +61,7 @@ def __getattr__(name: str):
         globals()["app"] = create_app()
         return globals()["app"]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 # Run the whole API locally with interactive docs at http://localhost:8000/docs
 if __name__ == "__main__":

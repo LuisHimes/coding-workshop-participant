@@ -1,3 +1,5 @@
+/** Calendar screen (/calendar): milestones and deadlines by month, for every role. */
+
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Box, Button, Card, CardContent, IconButton, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Stack,
@@ -9,12 +11,13 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import FlagIcon from '@mui/icons-material/Flag'
 import { milestones as milestonesApi } from '../api/endpoints'
 import { useApiData } from '../hooks/useApiData'
-import { useDirectory } from '../components/Directory'
+import { useDirectory } from '../context/DirectoryContext'
 import { EmptyState, ErrorAlert, PageHeader } from '../components/common'
 import { day, todayIso } from '../utils/format'
 import { MILESTONE_STATES, addDays, isoDay, milestoneState, parseDay } from '../utils/milestones'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+// Height in px of one row of bars in a week
 const LANE_HEIGHT = 24
 
 /** The weeks (Monday to Sunday, as ISO dates) covering a month. */
@@ -45,8 +48,11 @@ function layoutWeek(days, items) {
     })
 }
 
-/** One week's piece of a milestone bar, or a project deadline. Only the first piece on screen is focusable. */
-function ItemBar({ item, first, onOpen }) {
+/**
+ * One week's piece of a milestone bar, or a project deadline. A bar spanning several weeks is split into
+ * pieces; only the first piece on screen is `focusable`, so screen readers announce each item once.
+ */
+function ItemBar({ item, focusable, onOpen }) {
   const { from, to, lane, startsHere, endsHere } = item
   const isProject = item.kind === 'project'
   const colors = isProject
@@ -58,9 +64,9 @@ function ItemBar({ item, first, onOpen }) {
         component="button"
         type="button"
         onClick={onOpen}
-        aria-label={first ? item.ariaLabel : undefined}
-        aria-hidden={first ? undefined : true}
-        tabIndex={first ? undefined : -1}
+        aria-label={focusable ? item.ariaLabel : undefined}
+        aria-hidden={focusable ? undefined : true}
+        tabIndex={focusable ? undefined : -1}
         sx={{
           ...colors,
           gridColumn: `${from + 1} / ${to + 2}`, gridRow: lane + 2, zIndex: 1, my: '2px',
@@ -79,6 +85,10 @@ function ItemBar({ item, first, onOpen }) {
   )
 }
 
+/**
+ * One calendar row: seven day cells (today circled, deadline days tinted, other months' days greyed)
+ * with the week's bars laid over them. `gridStart` is the first day shown on the calendar.
+ */
 function Week({ days, month, items, deadlines, today, gridStart, onOpen }) {
   const placed = layoutWeek(days, items)
   const lanes = Math.max(1, ...placed.map((p) => p.lane + 1))
@@ -115,7 +125,7 @@ function Week({ days, month, items, deadlines, today, gridStart, onOpen }) {
         )
       })}
       {placed.map((item) => (
-        <ItemBar key={item.key} item={item} first={item.startsHere || days[0] === gridStart} onOpen={() => onOpen(item)} />
+        <ItemBar key={item.key} item={item} focusable={item.startsHere || days[0] === gridStart} onOpen={() => onOpen(item)} />
       ))}
     </Box>
   )
@@ -124,7 +134,8 @@ function Week({ days, month, items, deadlines, today, gridStart, onOpen }) {
 /**
  * Month calendar of milestones (bars across their dates, colored by state)
  * and deadlines (milestone and project end dates, highlighted). Everyone sees
- * the open projects they can see.
+ * the open projects they can see. The month and project filter are kept in
+ * the URL; clicking an item opens its project.
  */
 export default function CalendarPage() {
   const navigate = useNavigate()

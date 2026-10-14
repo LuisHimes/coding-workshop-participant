@@ -1,12 +1,19 @@
+/** "Your profile" screen (/profile), available to every role. */
+
 import { useState } from 'react'
 import { Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material'
 import { auth } from '../api/endpoints'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../context/AuthContext'
 import { ErrorAlert, Field, PageHeader } from '../components/common'
-import { useNotify } from '../components/Notifications'
+import { useNotify } from '../context/NotificationsContext'
 import PasswordForm from '../components/PasswordForm'
 import { ROLE_LABELS, money } from '../utils/format'
 
+/**
+ * The logged-in user's details and password. Everyone can change their name and
+ * email; job title, salary and role are read-only here. Salary shows only when
+ * the API includes it for this user.
+ */
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth()
   const notify = useNotify()

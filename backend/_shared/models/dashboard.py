@@ -94,6 +94,8 @@ GROUP BY u.id;
 
 
 class ProjectStatusReport(BaseModel):
+    """One row of the project_status view: a project's hours, costs and milestone progress."""
+
     project_id: int
     name: str
     status: ProjectStatus
@@ -115,12 +117,14 @@ class ProjectStatusReport(BaseModel):
     milestones_overdue: int
 
 
-# Reports built by service/reports.py on top of the views
+# Reports built by services/reports.py on top of the views
 
 RiskLevel = Literal["on_track", "at_risk", "off_track"]
 
 
 class ProjectRisk(BaseModel):
+    """A project's deadline risk level and the reasons for it."""
+
     level: RiskLevel
     reasons: list[str]
 
@@ -134,6 +138,8 @@ class ProjectHealth(ProjectStatusReport):
 
 
 class EmployeeProjectAllocation(BaseModel):
+    """The weekly hours an employee is planned for on one project."""
+
     project_id: int
     project_name: str
     hours_per_week: Decimal
@@ -153,6 +159,8 @@ class EmployeeAllocationReport(BaseModel):
 
 
 class DeliverableTask(BaseModel):
+    """A task of a deliverable and whether it is done."""
+
     id: int
     title: str
     is_done: bool

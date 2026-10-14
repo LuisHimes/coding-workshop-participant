@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS milestone_template_items (
 
 
 class MilestoneTemplateItemIn(BaseModel):
+    """One milestone of a template, without dates; duration_days is a planning hint."""
+
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
     duration_days: int | None = Field(default=None, ge=1, le=3650)
@@ -69,6 +71,8 @@ class MilestoneTemplateUpdate(BaseModel):
 
 
 class MilestoneTemplateItem(BaseModel):
+    """One milestone of a saved template, in its sequence."""
+
     id: int
     sequence: int
     title: str
@@ -77,6 +81,8 @@ class MilestoneTemplateItem(BaseModel):
 
 
 class MilestoneTemplate(BaseModel):
+    """A manager's milestone template with its milestones in order."""
+
     id: int
     name: str
     description: str | None
@@ -96,6 +102,7 @@ class PlannedMilestone(BaseModel):
 
     @model_validator(mode="after")
     def check_dates(self):
+        """Rejects an end date before the start date."""
         if self.end_date < self.start_date:
             raise ValueError(f'"{self.title}": end_date must be on or after start_date')
         return self

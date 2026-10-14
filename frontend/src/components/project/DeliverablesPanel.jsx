@@ -1,11 +1,16 @@
+/** Project page "Deliverables" tab. */
+
 import { Box, Chip, LinearProgress, Stack, Typography } from '@mui/material'
 import { projects as projectsApi } from '../../api/endpoints'
 import { useApiData } from '../../hooks/useApiData'
-import { useDirectory } from '../Directory'
+import { useDirectory } from '../../context/DirectoryContext'
 import { EmptyState, ErrorAlert, Loading, MilestoneStatusChip } from '../common'
 import { day, percent } from '../../utils/format'
 
-/** The dependency chain: milestones in order, what each waits on, and progress. */
+/**
+ * The dependency chain: milestones in order, what each waits on, task progress
+ * and who is assigned. Read-only, so it looks the same for every role.
+ */
 export default function DeliverablesPanel({ project }) {
   const directory = useDirectory()
   const { data, error, loading, reload } = useApiData(() => projectsApi.deliverables(project.id), [project.id])

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from '../App'
-import { AuthProvider, useAuth } from '../auth/AuthContext'
-import { DirectoryProvider } from '../components/Directory'
+import { AuthProvider, useAuth } from '../context/AuthContext'
+import { DirectoryProvider } from '../context/DirectoryContext'
 import MessageBoard from '../components/MessageBoard'
 import { admin, calls, respond } from './fakeApi'
 

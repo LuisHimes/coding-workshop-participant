@@ -1,3 +1,5 @@
+/** Project page (/projects/:projectId): overview, team, milestones, deliverables, hours and message board tabs. */
+
 import { useState } from 'react'
 import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom'
 import {
@@ -8,10 +10,10 @@ import AddIcon from '@mui/icons-material/Add'
 import ArchiveIcon from '@mui/icons-material/Archive'
 import UnarchiveIcon from '@mui/icons-material/Unarchive'
 import { projects as projectsApi, reports, timeEntries } from '../api/endpoints'
-import { useRole } from '../auth/AuthContext'
+import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
-import { useDirectory } from '../components/Directory'
-import { useNotify } from '../components/Notifications'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import {
   ConfirmDialog, ErrorAlert, Field, Loading, PageHeader, ProjectStatusChip, RiskChip,
 } from '../components/common'
@@ -28,6 +30,11 @@ import { dateTime, day, hours, money, percent } from '../utils/format'
 const TABS = ['overview', 'team', 'milestones', 'deliverables', 'hours', 'board']
 const TAB_LABELS = { overview: 'Overview', team: 'Team', milestones: 'Milestones', deliverables: 'Deliverables', hours: 'Hours', board: 'Message board' }
 
+/**
+ * Project overview: timeline, details and health. Managers and admins also see the budget and the
+ * health report (cost, risk); admins can calculate a budget estimate and use it as the budget.
+ * Employees see no costs.
+ */
 function Overview({ project, onChanged }) {
   const directory = useDirectory()
   const { isAdmin, isEmployee } = useRole()
@@ -40,7 +47,7 @@ function Overview({ project, onChanged }) {
   const milestones = useApiData(() => projectsApi.milestones.list(project.id), [project.id, project.updated_at])
   const [estimate, setEstimate] = useState(null)
   const [estimateError, setEstimateError] = useState(null)
-  const h = health.data
+  const report = health.data
 
   const loadEstimate = async () => {
     setEstimateError(null)
@@ -113,22 +120,22 @@ function Overview({ project, onChanged }) {
         <CardContent>
           <Typography variant="subtitle1" sx={{ mb: 2 }}>Health</Typography>
           <ErrorAlert error={health.error} onRetry={health.reload} />
-          {health.loading && !h ? <Loading /> : h && (
+          {health.loading && !report ? <Loading /> : report && (
             <>
               <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-                <Field label="Milestones completed">{h.milestones_completed} of {h.milestones_total} ({percent(h.completion_pct)})</Field>
-                <Field label="Timeline used">{percent(h.timeline_pct)}</Field>
-                <Field label="Hours logged">{hours(h.logged_hours)} of {hours(h.allocated_hours)}</Field>
-                <Field label="Team">{h.member_count} {h.member_count === 1 ? 'employee' : 'employees'}</Field>
-                <Field label="Labor cost">{money(h.labor_cost)} ({percent(h.budget_used_pct)} of budget)</Field>
-                <Field label="Budget remaining">{money(h.budget_remaining)}</Field>
-                <Field label="Current milestone">{h.current_milestone}</Field>
-                <Field label="Deadline risk"><RiskChip risk={h.risk} /></Field>
+                <Field label="Milestones completed">{report.milestones_completed} of {report.milestones_total} ({percent(report.completion_pct)})</Field>
+                <Field label="Timeline used">{percent(report.timeline_pct)}</Field>
+                <Field label="Hours logged">{hours(report.logged_hours)} of {hours(report.allocated_hours)}</Field>
+                <Field label="Team">{report.member_count} {report.member_count === 1 ? 'employee' : 'employees'}</Field>
+                <Field label="Labor cost">{money(report.labor_cost)} ({percent(report.budget_used_pct)} of budget)</Field>
+                <Field label="Budget remaining">{money(report.budget_remaining)}</Field>
+                <Field label="Current milestone">{report.current_milestone}</Field>
+                <Field label="Deadline risk"><RiskChip risk={report.risk} /></Field>
               </Box>
-              {h.risk.reasons.length > 0 && (
-                <Alert severity={h.risk.level === 'off_track' ? 'error' : 'warning'} sx={{ mt: 2 }}>
+              {report.risk.reasons.length > 0 && (
+                <Alert severity={report.risk.level === 'off_track' ? 'error' : 'warning'} sx={{ mt: 2 }}>
                   <List dense disablePadding>
-                    {h.risk.reasons.map((reason) => <ListItem key={reason} disableGutters sx={{ py: 0 }}>{reason}</ListItem>)}
+                    {report.risk.reasons.map((reason) => <ListItem key={reason} disableGutters sx={{ py: 0 }}>{reason}</ListItem>)}
                   </List>
                 </Alert>
               )}
@@ -159,6 +166,11 @@ function HoursPanel({ project, editable, canLog }) {
   )
 }
 
+/**
+ * One project, in tabs (the open tab is kept in the URL as ?tab=). Managers and admins can edit it;
+ * admins can delete (archive) or unarchive it. Archived projects are read-only, and employees only
+ * work on milestones and log hours.
+ */
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
   const id = Number(projectId)
@@ -178,7 +190,8 @@ export default function ProjectDetailPage() {
   if (error && !project) return (<><PageHeader title="Project" back={back} /><ErrorAlert error={error} onRetry={reload} /></>)
 
   const readOnly = project.archived
-  const changed = () => { reload(); directory.refresh() }
+  // The directory holds project names and archived flags, so it refreshes too
+  const refreshProject = () => { reload(); directory.refresh() }
 
   return (
     <>
@@ -206,7 +219,7 @@ export default function ProjectDetailPage() {
         {TABS.map((t) => <Tab key={t} value={t} label={TAB_LABELS[t]} />)}
       </Tabs>
 
-      {tab === 'overview' && <Overview project={project} onChanged={changed} />}
+      {tab === 'overview' && <Overview project={project} onChanged={refreshProject} />}
       {tab === 'team' && <Card><CardContent><TeamPanel project={project} readOnly={readOnly || isEmployee} /></CardContent></Card>}
       {tab === 'milestones' && <MilestonesPanel project={project} readOnly={readOnly} />}
       {tab === 'deliverables' && <Card><CardContent><DeliverablesPanel project={project} /></CardContent></Card>}
@@ -224,7 +237,7 @@ export default function ProjectDetailPage() {
         destructive
         onClose={() => setArchiving(false)}
         // Open projects are only ever deleted: completing a project archives it as completed already
-        onConfirm={async () => { await projectsApi.remove(project.id); notify('Project archived'); changed() }}
+        onConfirm={async () => { await projectsApi.remove(project.id); notify('Project archived'); refreshProject() }}
       />
 
       <ConfirmDialog
@@ -233,7 +246,7 @@ export default function ProjectDetailPage() {
         message="It becomes visible to its manager and team again, and can be changed."
         confirmLabel="Unarchive"
         onClose={() => setUnarchiving(false)}
-        onConfirm={async () => { await projectsApi.unarchive(project.id); notify('Project restored'); changed() }}
+        onConfirm={async () => { await projectsApi.unarchive(project.id); notify('Project restored'); refreshProject() }}
       />
     </>
   )

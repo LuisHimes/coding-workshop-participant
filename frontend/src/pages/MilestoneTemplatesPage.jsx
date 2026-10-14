@@ -1,3 +1,5 @@
+/** Milestone templates screen (/milestone-templates) for managers and admins. */
+
 import { useState } from 'react'
 import {
   Box, Button, Card, IconButton, InputAdornment, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -8,24 +10,28 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import SearchIcon from '@mui/icons-material/Search'
 import { milestones as milestonesApi } from '../api/endpoints'
-import { useRole } from '../auth/AuthContext'
+import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
-import { useDirectory } from '../components/Directory'
-import { useNotify } from '../components/Notifications'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import MilestoneTemplateDialog from '../components/MilestoneTemplateDialog'
 import { ConfirmDialog, EmptyState, ErrorAlert, Loading, PageHeader, UserPicker } from '../components/common'
 
+/** "1 day" or "5 days". */
 const days = (n) => `${n} ${n === 1 ? 'day' : 'days'}`
 
-/** Managers' predefined milestones: create, edit and delete them; they're added to projects from the Milestones tab. */
+/**
+ * Managers' predefined milestones: create, edit and delete them; they're added to projects from the
+ * Milestones tab. Managers see their own templates; admins see every manager's and can filter by manager.
+ */
 export default function MilestoneTemplatesPage() {
   const directory = useDirectory()
   const notify = useNotify()
   const { isAdmin } = useRole()
-  const [q, setQ] = useState('')
+  const [searchText, setSearchText] = useState('')
   const [managerId, setManagerId] = useState(null)
-  const search = useDebounced(q.trim())
+  const search = useDebounced(searchText.trim())
   const { data, error, loading, reload } = useApiData(
     () => milestonesApi.templates.list({ q: search || undefined, manager_id: managerId || undefined }),
     [search, managerId],
@@ -45,7 +51,7 @@ export default function MilestoneTemplatesPage() {
       />
       <Card>
         <Stack direction="row" spacing={2} sx={{ p: 2 }}>
-          <TextField id="template-search" placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)}
+          <TextField id="template-search" placeholder="Search by name" value={searchText} onChange={(e) => setSearchText(e.target.value)}
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
             sx={{ maxWidth: 320 }} />
           {isAdmin && (

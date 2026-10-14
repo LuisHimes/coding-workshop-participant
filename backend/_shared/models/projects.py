@@ -113,6 +113,7 @@ class ProjectCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_dates(self):
+        """Rejects a projected end date before the start date."""
         if self.projected_end_date < self.start_date:
             raise ValueError("projected_end_date must be on or after start_date")
         return self
@@ -151,6 +152,7 @@ class ProjectSummary(BaseModel):
     @computed_field
     @property
     def archived(self) -> bool:
+        """Whether the project is archived (only admins see archived projects)."""
         return self.archived_at is not None
 
 
@@ -161,11 +163,15 @@ class Project(ProjectSummary):
 
 
 class ProjectMemberCreate(BaseModel):
+    """Add an employee to a project with their planned weekly hours (40 by default)."""
+
     user_id: str = Field(pattern=r"^[A-Za-z0-9]{6}$")
     hours_per_week: Decimal = Field(default=Decimal(HOURS_PER_WEEK), gt=0, le=HOURS_PER_WEEK, decimal_places=1)
 
 
 class ProjectMember(BaseModel):
+    """An employee on a project and their planned weekly hours."""
+
     id: int
     project_id: int
     user_id: str
@@ -195,4 +201,6 @@ class BudgetEstimate(BaseModel):
 
 
 class ProjectMemberUpdate(BaseModel):
+    """Change a member's planned weekly hours."""
+
     hours_per_week: Decimal = Field(gt=0, le=HOURS_PER_WEEK, decimal_places=1)

@@ -80,11 +80,15 @@ class TeamCreate(BaseModel):
 
 
 class TeamUpdate(BaseModel):
+    """Rename a team or change its description. Only the fields sent are changed."""
+
     name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
 
 
 class Team(BaseModel):
+    """A team with its number of members."""
+
     id: int
     name: str
     description: str | None
@@ -95,10 +99,14 @@ class Team(BaseModel):
 
 
 class TeamMemberCreate(BaseModel):
+    """Add one of the team manager's direct reports to the team."""
+
     user_id: str = Field(pattern=r"^[A-Za-z0-9]{6}$")
 
 
 class TeamMember(BaseModel):
+    """A team member with their name and job title."""
+
     team_id: int
     user_id: str
     first_name: str
@@ -116,10 +124,14 @@ class TeamProjectAssignment(BaseModel):
 
 
 class SkippedMember(BaseModel):
+    """A team member who was not added to the project, and why."""
+
     user_id: str
     reason: str
 
 
 class TeamStaffingResult(BaseModel):
+    """The result of adding a team to a project: who was added and who was skipped."""
+
     added: list[ProjectMemberAllocation]
     skipped: list[SkippedMember]

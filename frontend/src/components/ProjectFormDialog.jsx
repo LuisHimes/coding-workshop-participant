@@ -1,10 +1,12 @@
+/** Create/edit project dialog for managers and admins. */
+
 import { useState } from 'react'
 import { MenuItem, Stack, TextField } from '@mui/material'
 import { projects as projectsApi } from '../api/endpoints'
-import { useRole } from '../auth/AuthContext'
+import { useRole } from '../context/AuthContext'
 import FormDialog from './FormDialog'
 import { UserPicker } from './common'
-import { useDirectory } from './Directory'
+import { useDirectory } from '../context/DirectoryContext'
 import { PROJECT_STATUS_LABELS, todayIso } from '../utils/format'
 
 // start_date is filled in with today each time the dialog opens
@@ -19,12 +21,12 @@ export default function ProjectFormDialog({ open, project, onClose, onSaved }) {
   const { isAdmin } = useRole()
   const editing = Boolean(project)
   const [form, setForm] = useState(EMPTY)
-  const [initialized, setInitialized] = useState(null)
+  const [openedFor, setOpenedFor] = useState(null)
 
   // Reset the form each time the dialog opens
   const key = open ? (project?.id ?? 'new') : null
-  if (key !== initialized) {
-    setInitialized(key)
+  if (key !== openedFor) {
+    setOpenedFor(key)
     if (open) {
       setForm(project ? {
         name: project.name, description: project.description ?? '', manager_id: project.manager_id,

@@ -1,11 +1,14 @@
+/** Project health table shown on the dashboard and the reports page. */
+
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, LinearProgress, Link, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
 } from '@mui/material'
-import { useDirectory } from './Directory'
+import { useDirectory } from '../context/DirectoryContext'
 import { EmptyState, RiskChip } from './common'
 import { day, money, percent } from '../utils/format'
 
+/** A thin progress bar with its percentage; the bar stops at 100% but the label shows the real value. */
 function Progress({ value, color }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>

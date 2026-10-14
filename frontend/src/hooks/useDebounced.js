@@ -1,3 +1,5 @@
+/** Hook that delays a fast-changing value, such as a search box's text. */
+
 import { useEffect, useState } from 'react'
 
 /** `value`, updated only after it stops changing for `delay` ms (for search boxes). */

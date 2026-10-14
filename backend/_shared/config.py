@@ -28,6 +28,8 @@ ENV_FILES = [SERVICE_DIR / ".env.development", SERVICE_DIR / ".env"] if APP_ENV 
 
 
 class Settings(BaseSettings):
+    """Every setting the app reads, validated at startup. Field names match the environment variables."""
+
     model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore")
 
     app_env: Literal["development", "production"] = APP_ENV

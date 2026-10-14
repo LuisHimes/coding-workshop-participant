@@ -1,3 +1,5 @@
+/** Employee home page (/). Managers and admins get DashboardPage instead. */
+
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
@@ -6,18 +8,19 @@ import {
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { milestones as milestonesApi, reports } from '../api/endpoints'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
-import { useDirectory } from '../components/Directory'
-import { useNotify } from '../components/Notifications'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import { EmptyState, ErrorAlert, Loading, PageHeader, ProjectStatusChip } from '../components/common'
 import LogHoursDialog from '../components/LogHoursDialog'
 import MessageBoard from '../components/MessageBoard'
 import { day, hours } from '../utils/format'
 
+// Hours in a normal work week; more than this is overtime
 const FULL_WEEK = 40
 
-/** The employee's current milestone: tick off its tasks, or mark their part finished. */
+/** The employee's current milestone: tick off its tasks, or mark their part finished (which lets them start the next one). */
 function CurrentWork({ milestoneId, projectId, onChanged }) {
   const { user } = useAuth()
   const directory = useDirectory()
@@ -78,13 +81,17 @@ function CurrentWork({ milestoneId, projectId, onChanged }) {
   )
 }
 
+/**
+ * Home page for employees: their current milestone, their projects, this week's
+ * hours against a 40-hour week, and the message board.
+ */
 export default function EmployeeHomePage() {
   const { user } = useAuth()
   const directory = useDirectory()
   const home = useApiData(() => reports.home(), [])
   const [logging, setLogging] = useState(false)
-  const h = home.data
-  const weekHours = Number(h?.hours_this_week ?? 0)
+  const summary = home.data
+  const weekHours = Number(summary?.hours_this_week ?? 0)
   const overLimit = weekHours > FULL_WEEK
   const myProjects = directory.projects.filter((p) => !p.archived)
 
@@ -96,14 +103,14 @@ export default function EmployeeHomePage() {
         actions={<Button variant="contained" startIcon={<AddIcon />} onClick={() => setLogging(true)}>Log hours</Button>}
       />
       <ErrorAlert error={home.error} onRetry={home.reload} />
-      {home.loading && !h ? <Loading /> : h && (
+      {home.loading && !summary ? <Loading /> : summary && (
         <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'minmax(0, 3fr) minmax(320px, 2fr)', alignItems: 'start' }}>
           <Stack spacing={3}>
             <Card>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ mb: 1 }}>Your current milestone</Typography>
-                {h.active_milestone_id ? (
-                  <CurrentWork key={h.active_milestone_id} milestoneId={h.active_milestone_id} projectId={h.active_project_id} onChanged={home.reload} />
+                {summary.active_milestone_id ? (
+                  <CurrentWork key={summary.active_milestone_id} milestoneId={summary.active_milestone_id} projectId={summary.active_project_id} onChanged={home.reload} />
                 ) : (
                   <EmptyState title="No active milestone">
                     When your manager starts a milestone you're assigned to, it shows up here.

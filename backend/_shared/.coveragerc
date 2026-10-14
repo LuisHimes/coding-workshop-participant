@@ -3,8 +3,7 @@
 branch = True
 source = .
 omit =
-    test_*.py
-    conftest.py
+    tests/*
 
 [report]
 # Fail the run if coverage drops below 100%

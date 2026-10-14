@@ -8,6 +8,7 @@
 
 const BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 
+/** A failed request: `status` is the HTTP status (0 when the server can't be reached), `message` is safe to show. */
 export class ApiError extends Error {
   constructor(status, message, detail) {
     super(message)
@@ -19,6 +20,7 @@ export class ApiError extends Error {
 let accessToken = null
 let onUnauthorized = () => {}
 
+/** Sets the bearer token sent with every request (null after logout). */
 export function setAccessToken(token) {
   accessToken = token
 }

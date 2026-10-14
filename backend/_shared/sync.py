@@ -37,7 +37,7 @@ MANIFEST = ".synced"
 # What a Lambda needs. Listed explicitly so tests, tooling and the packages
 # start-dev.sh installs here are never copied.
 MODULES = ["app.py", "config.py", "database.py", "dependencies.py", "middleware.py"]
-PACKAGES = ["controller", "migrations", "models", "repository", "service"]
+PACKAGES = ["controllers", "migrations", "models", "repositories", "services"]
 ENV_FILES = [".env.development", ".env"]
 
 # The Lambda runtime (infra/locals.tf); .pyc files only work for the Python version that wrote them
@@ -57,10 +57,16 @@ def shared_files() -> list[Path]:
 
 
 def feature_dirs() -> list[Path]:
+    """Feature folders: those with a function.py, except folders starting with _ or a dot."""
     return sorted(p.parent for p in BACKEND_DIR.glob("*/function.py") if not p.parent.name.startswith(("_", ".")))
 
 
 def sync_feature(target: Path, files: list[Path]) -> None:
+    """
+    Copies the shared files into one feature folder. Files listed in the folder's
+    previous manifest but no longer shared are removed, with their bytecode and any
+    folders left empty; other files in the folder are left alone.
+    """
     manifest = target / MANIFEST
     previous = set(json.loads(manifest.read_text())) if manifest.exists() else set()
     current = {str(path) for path in files}
@@ -70,8 +76,11 @@ def sync_feature(target: Path, files: list[Path]) -> None:
         (target / stale).unlink(missing_ok=True)
         if stale.endswith(".py"):
             Path(importlib.util.cache_from_source(str(target / stale))).unlink(missing_ok=True)
-    for package in PACKAGES:
-        for directory in sorted((target / package).rglob("*"), reverse=True) if (target / package).exists() else []:
+    # Then prune emptied folders, including the folders of packages that were renamed or removed
+    folders = set(PACKAGES) | {Path(stale).parts[0] for stale in previous - current}
+    for folder in sorted(folders):
+        root = target / folder
+        for directory in [*sorted(root.rglob("*"), reverse=True), root] if root.is_dir() else []:
             if directory.is_dir() and not any(directory.iterdir()):
                 directory.rmdir()
 
@@ -110,6 +119,7 @@ def compile_feature(target: Path) -> int:
 
 
 def main() -> None:
+    """Syncs and precompiles every feature folder. With --json, prints a summary for Terraform."""
     files = shared_files()
     targets = feature_dirs()
     compiled = 0

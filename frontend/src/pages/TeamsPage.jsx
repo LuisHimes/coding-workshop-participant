@@ -1,3 +1,5 @@
+/** Teams screen (/teams) for managers and admins. */
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -7,24 +9,28 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import { teams as teamsApi } from '../api/endpoints'
-import { useAuth, useRole } from '../auth/AuthContext'
+import { useAuth, useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
-import { useDirectory } from '../components/Directory'
-import { useNotify } from '../components/Notifications'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import FormDialog from '../components/FormDialog'
 import { EmptyState, ErrorAlert, Loading, PageHeader, UserPicker } from '../components/common'
 import { dateTime } from '../utils/format'
 
+/**
+ * Teams list with search. Managers see and create their own teams; admins see every team, can
+ * filter by manager, and pick the manager when creating one. Clicking a row opens the team.
+ */
 export default function TeamsPage() {
   const navigate = useNavigate()
   const directory = useDirectory()
   const notify = useNotify()
   const { user } = useAuth()
   const { isAdmin } = useRole()
-  const [q, setQ] = useState('')
+  const [searchText, setSearchText] = useState('')
   const [managerId, setManagerId] = useState(null)
-  const search = useDebounced(q.trim())
+  const search = useDebounced(searchText.trim())
   const { data, error, loading, reload } = useApiData(
     () => teamsApi.list({ q: search || undefined, manager_id: managerId || undefined }),
     [search, managerId],
@@ -44,7 +50,7 @@ export default function TeamsPage() {
       />
       <Card>
         <Stack direction="row" spacing={2} sx={{ p: 2 }}>
-          <TextField id="team-search" placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)}
+          <TextField id="team-search" placeholder="Search by name" value={searchText} onChange={(e) => setSearchText(e.target.value)}
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
             sx={{ maxWidth: 320 }} />
           {isAdmin && (

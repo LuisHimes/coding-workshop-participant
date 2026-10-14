@@ -1,9 +1,11 @@
+/** "Log hours" dialog used on the employee home page, the hours page and project pages. */
+
 import { useState } from 'react'
 import { MenuItem, Stack, TextField } from '@mui/material'
 import { projects as projectsApi, timeEntries as timeEntriesApi } from '../api/endpoints'
 import { useApiData } from '../hooks/useApiData'
-import { useDirectory } from './Directory'
-import { useNotify } from './Notifications'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import FormDialog from './FormDialog'
 import { todayIso } from '../utils/format'
 

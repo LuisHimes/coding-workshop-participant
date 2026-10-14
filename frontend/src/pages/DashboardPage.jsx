@@ -1,13 +1,16 @@
+/** Manager and admin dashboard (/). Employees get EmployeeHomePage instead. */
+
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Card, CardContent, Stack, Typography } from '@mui/material'
 import { reports } from '../api/endpoints'
-import { useAuth, useRole } from '../auth/AuthContext'
+import { useAuth, useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { ErrorAlert, Loading, PageHeader } from '../components/common'
 import MessageBoard from '../components/MessageBoard'
 import ProjectHealthTable from '../components/ProjectHealthTable'
 import { money } from '../utils/format'
 
+/** A headline number card. `tone` colors its edge (warning, error); `to` adds a "View" link. */
 function Stat({ label, value, detail, tone, to }) {
   return (
     <Card sx={{ borderLeft: 4, borderLeftColor: tone ? `${tone}.main` : 'divider' }}>
@@ -23,6 +26,10 @@ function Stat({ label, value, detail, tone, to }) {
   )
 }
 
+/**
+ * Home page for managers and admins: headline numbers, project status and the
+ * message board. Admins see every open project; managers see their own.
+ */
 export default function DashboardPage() {
   const { user } = useAuth()
   const { isAdmin } = useRole()

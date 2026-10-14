@@ -29,8 +29,8 @@ from config import settings
 from models import (
     audit, base, dashboard, messages, milestone_templates, milestones, projects, teams, time_entries, users,
 )
-from repository.users import UserRepository
-from service.auth import ensure_initial_admin
+from repositories.users import UserRepository
+from services.auth import ensure_initial_admin
 
 logger = logging.getLogger(__name__)
 

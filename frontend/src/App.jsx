@@ -1,9 +1,11 @@
+/** Root component: app-wide providers, lazy-loaded screens and the routes for each role. */
+
 import { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { ColorModeProvider } from './components/ColorMode'
-import { AuthProvider, useAuth } from './auth/AuthContext'
-import { NotificationProvider } from './components/Notifications'
-import { DirectoryProvider } from './components/Directory'
+import { ColorModeProvider } from './context/ColorModeContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationsContext'
+import { DirectoryProvider } from './context/DirectoryContext'
 import { Loading } from './components/common'
 import Layout from './components/Layout'
 import { prefetchWhenIdle } from './utils/prefetch'
@@ -42,7 +44,14 @@ const ProfilePage = lazy(PAGES.ProfilePage)
 const AuditPage = lazy(PAGES.AuditPage)
 const ChangePasswordPage = lazy(PAGES.ChangePasswordPage)
 
-/** Single-page app: React Router swaps screens in the browser; the server always serves index.html. */
+/**
+ * Picks the routes for whoever is logged in. Logged-out visitors only reach
+ * the login page; users with a temporary password only reach "Choose a new
+ * password". Employees get their home page, projects, calendar, hours and
+ * profile; managers and admins also get users, teams, templates and reports,
+ * and admins the audit log. React Router swaps screens in the browser; the
+ * server always serves index.html.
+ */
 function AppRoutes() {
   const { user, status } = useAuth()
 
@@ -103,6 +112,7 @@ function AppRoutes() {
   )
 }
 
+/** The whole app: theme, notifications and login state around the routes. Starts prefetching the other screens. */
 export default function App() {
   useEffect(() => { prefetchWhenIdle(Object.values(PAGES)) }, [])
 

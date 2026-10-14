@@ -1,13 +1,15 @@
+/** Dialog on the Milestones tab for adding milestones from a template in one step. */
+
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, Checkbox, Link, MenuItem, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
 } from '@mui/material'
 import { milestones as milestonesApi, projects as projectsApi } from '../../api/endpoints'
-import { useRole } from '../../auth/AuthContext'
+import { useRole } from '../../context/AuthContext'
 import { useApiData } from '../../hooks/useApiData'
-import { useDirectory } from '../Directory'
-import { useNotify } from '../Notifications'
+import { useDirectory } from '../../context/DirectoryContext'
+import { useNotify } from '../../context/NotificationsContext'
 import FormDialog from '../FormDialog'
 import { Loading } from '../common'
 import { day } from '../../utils/format'
@@ -29,13 +31,18 @@ function suggestDates(template, project, existing) {
   })
 }
 
+/** Why a row can't be added yet, or null when its dates are fine. */
 function rowProblem(row) {
   if (!row.start_date || !row.end_date) return 'Pick a start and an end date'
   if (row.end_date < row.start_date) return 'The end date must be on or after the start date'
   return null
 }
 
-/** Adds a milestone template's milestones to a project, with a start and end date for each. */
+/**
+ * Adds a milestone template's milestones to a project, with a start and end
+ * date for each. `existing` is the project's current milestones; the new ones
+ * are numbered and dated after them.
+ */
 export default function ApplyTemplateDialog({ open, project, existing, onClose, onAdded }) {
   const directory = useDirectory()
   const notify = useNotify()

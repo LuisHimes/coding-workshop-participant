@@ -1,13 +1,15 @@
+/** Message board: announcements and project posts, used on the dashboards and project pages. */
+
 import { useState } from 'react'
 import {
   Box, Button, IconButton, List, ListItem, ListItemText, MenuItem, Stack, TextField, Tooltip, Typography,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { messages as messagesApi } from '../api/endpoints'
-import { useAuth, useRole } from '../auth/AuthContext'
+import { useAuth, useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
-import { useDirectory } from './Directory'
-import { useNotify } from './Notifications'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import { ConfirmDialog, EmptyState, ErrorAlert, Loading } from './common'
 import { dateTime } from '../utils/format'
 
@@ -19,6 +21,7 @@ export default function MessageBoard({ filterable = false, ...props }) {
   return filterable ? <FilterableBoard {...props} /> : <Board {...props} />
 }
 
+/** The board with a "Show posts from" picker and paging by `limit` posts. Picking a project resets the paging. */
 function FilterableBoard({ limit: pageSize = 20, compact = false }) {
   const directory = useDirectory()
   const { isAdmin } = useRole()
@@ -57,7 +60,7 @@ function Board({ projectId = null, limit = 50, compact = false, readOnly = false
     [projectId, limit],
   )
   const [body, setBody] = useState('')
-  const [chosenTarget, setTarget] = useState(null)
+  const [chosenTarget, setChosenTarget] = useState(null)
   const projectTargets = directory.projects.filter((p) => !p.archived)
   // Admins default to an announcement; managers can only post to their projects
   const target = projectId ?? chosenTarget ?? (isAdmin ? 'everyone' : projectTargets[0]?.id ?? '')
@@ -109,7 +112,7 @@ function Board({ projectId = null, limit = 50, compact = false, readOnly = false
                 select
                 label="Post to"
                 value={target}
-                onChange={(e) => setTarget(e.target.value)}
+                onChange={(e) => setChosenTarget(e.target.value)}
                 sx={{ maxWidth: 320 }}
               >
                 {isAdmin && <MenuItem value="everyone">Everyone (announcement)</MenuItem>}

@@ -1,3 +1,5 @@
+/** Password change form, used on the profile page and the forced first-login password change. */
+
 import { useState } from 'react'
 import { Button, Stack, TextField } from '@mui/material'
 import { auth } from '../api/endpoints'

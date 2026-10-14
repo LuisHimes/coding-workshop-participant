@@ -1,3 +1,5 @@
+/** Table of logged hours, with optional correct and delete actions. */
+
 import { useState } from 'react'
 import {
   IconButton, Table, TableBody, TableCell, TableContainer, TableFooter, TableHead, TableRow, TextField, Tooltip,
@@ -5,13 +7,17 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import { timeEntries as timeEntriesApi } from '../api/endpoints'
-import { useDirectory } from './Directory'
-import { useNotify } from './Notifications'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import FormDialog from './FormDialog'
 import { ConfirmDialog, EmptyState } from './common'
 import { day, hours } from '../utils/format'
 
-/** Logged hours; `editable` (admins) adds corrections and deletes. Calls onChanged after either. */
+/**
+ * Logged hours with a total row. `showProject` adds the project column; `editable` adds
+ * corrections and deletes (admins on any entry, employees on the entries they see, which are their own).
+ * Calls onChanged after either.
+ */
 export default function TimeEntriesTable({ entries, showProject = true, editable = false, onChanged }) {
   const directory = useDirectory()
   const notify = useNotify()

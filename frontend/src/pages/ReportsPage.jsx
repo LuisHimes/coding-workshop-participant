@@ -1,12 +1,14 @@
+/** Reports screen (/reports): project status, risk, budget, allocation and overtime. */
+
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
   Alert, Box, Card, CardContent, Chip, FormControlLabel, Link, List, ListItem, MenuItem, Stack, Switch, Tab, Table,
   TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, TextField, Typography,
 } from '@mui/material'
 import { reports, teams as teamsApi } from '../api/endpoints'
-import { useRole } from '../auth/AuthContext'
+import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
-import { useDirectory } from '../components/Directory'
+import { useDirectory } from '../context/DirectoryContext'
 import { EmptyState, ErrorAlert, HoursChip, Loading, PageHeader, RiskChip } from '../components/common'
 import ProjectHealthTable from '../components/ProjectHealthTable'
 import { day, hours, money, percent } from '../utils/format'
@@ -19,6 +21,7 @@ const TABS = {
   overtime: 'Overtime',
 }
 
+/** Health of each open project. Admins can switch on archived projects too; the choice is kept in the URL. */
 function ProjectStatusReport() {
   const { isAdmin } = useRole()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -37,6 +40,7 @@ function ProjectStatusReport() {
   )
 }
 
+/** A card per at-risk or off-track project, listing the reasons. */
 function AtRiskReport() {
   const directory = useDirectory()
   const { data, error, loading, reload } = useApiData(() => reports.atRisk(), [])
@@ -71,6 +75,7 @@ function AtRiskReport() {
   )
 }
 
+/** Budget, estimated cost, labor cost so far and hours for each open project. */
 function BudgetReport() {
   const { data, error, loading, reload } = useApiData(() => reports.budget(), [])
   return (
@@ -118,6 +123,10 @@ function BudgetReport() {
   )
 }
 
+/**
+ * Each employee's planned weekly hours by project and hours logged last week, filterable by team (kept
+ * in the URL). `overAllocatedOnly` limits it to employees in overtime (the Overtime tab).
+ */
 function AllocationReport({ overAllocatedOnly }) {
   const directory = useDirectory()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -192,6 +201,10 @@ function AllocationReport({ overAllocatedOnly }) {
   )
 }
 
+/**
+ * Reports for managers and admins, one tab each; the open tab is kept in the URL (?tab=) so dashboard
+ * cards can link to it. Admins see the whole organization, managers their own projects and employees.
+ */
 export default function ReportsPage() {
   const { isAdmin } = useRole()
   const [searchParams, setSearchParams] = useSearchParams()

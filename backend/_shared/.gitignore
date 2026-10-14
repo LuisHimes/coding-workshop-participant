@@ -2,11 +2,12 @@
 # Ignore every folder except the app's packages; typing_extensions is the only
 # dependency installed as a single file.
 /*/
-!/controller/
+!/controllers/
 !/migrations/
 !/models/
-!/repository/
-!/service/
+!/repositories/
+!/services/
+!/tests/
 /bin/
 /typing_extensions.py
 /.pip_installed

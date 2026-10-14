@@ -1,3 +1,5 @@
+/** Timeline bar of a project's milestones by date and state, on the projects list and project pages. */
+
 import { Box, Stack, Tooltip, Typography } from '@mui/material'
 import { day, todayIso } from '../utils/format'
 import { MILESTONE_STATES, daysBetween, milestoneState, parseDay } from '../utils/milestones'
@@ -5,6 +7,7 @@ import { MILESTONE_STATES, daysBetween, milestoneState, parseDay } from '../util
 // Tick labels closer than this (percent of the bar) would overlap, so the crowded ones are skipped
 const MIN_LABEL_GAP = 11
 
+/** "Oct 13", or "Oct 13, 2026" when `withYear`. */
 function tickLabel(iso, withYear) {
   return parseDay(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(withYear && { year: 'numeric' }) })
 }

@@ -1,3 +1,5 @@
+/** Material UI theme: brand colors for light and dark mode, typography and component defaults. */
+
 import { createTheme } from '@mui/material/styles'
 
 // The same teal and navy brand in both modes, lightened for dark backgrounds

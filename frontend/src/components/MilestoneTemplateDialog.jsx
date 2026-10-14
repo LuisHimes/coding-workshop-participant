@@ -1,3 +1,5 @@
+/** Create/edit dialog for milestone templates (reusable lists of milestones). */
+
 import { useState } from 'react'
 import { Box, Button, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
@@ -5,19 +7,25 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { milestones as milestonesApi } from '../api/endpoints'
-import { useAuth, useRole } from '../auth/AuthContext'
-import { useDirectory } from './Directory'
-import { useNotify } from './Notifications'
+import { useAuth, useRole } from '../context/AuthContext'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import FormDialog from './FormDialog'
 import { UserPicker } from './common'
 
+// Each row gets a stable React key so inputs keep focus when rows are moved or removed
 let nextKey = 0
+/** One editable milestone row, from a saved template milestone or blank. Days are kept as text while typing. */
 const row = (item = {}) => ({
   key: nextKey++, title: item.title ?? '', description: item.description ?? '', duration_days: item.duration_days ? String(item.duration_days) : '',
 })
+/** The usual length is optional; when given it must be a whole number of days from 1 to 3650. */
 const validDays = (value) => value === '' || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 3650)
 
-/** Create a milestone template, or edit one when `template` is given. */
+/**
+ * Create a milestone template, or edit one when `template` is given. Managers'
+ * new templates are their own; admins pick the manager a new template is for.
+ */
 export default function MilestoneTemplateDialog({ open, template, onClose, onSaved }) {
   const directory = useDirectory()
   const notify = useNotify()

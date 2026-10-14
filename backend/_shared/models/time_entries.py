@@ -36,6 +36,8 @@ CREATE INDEX IF NOT EXISTS time_entries_milestone_id_idx ON time_entries (milest
 
 
 class TimeEntryCreate(BaseModel):
+    """Employees: log hours worked on a project, optionally against one of its milestones."""
+
     project_id: int
     milestone_id: int | None = None
     work_date: date
@@ -44,12 +46,16 @@ class TimeEntryCreate(BaseModel):
 
 
 class TimeEntryUpdate(BaseModel):
+    """Change an entry's date, hours or description. Only the fields sent are changed."""
+
     work_date: date | None = None
     hours: Decimal | None = Field(default=None, gt=0, le=24, max_digits=4, decimal_places=2)
     description: str | None = None
 
 
 class TimeEntry(BaseModel):
+    """Hours an employee logged on a project for one day."""
+
     id: int
     user_id: str
     project_id: int

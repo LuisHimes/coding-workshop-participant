@@ -1,3 +1,5 @@
+/** Audit log screen (/audit), admins only. */
+
 import { useState } from 'react'
 import {
   Box, Button, Card, Chip, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
@@ -6,10 +8,11 @@ import {
 import { audit as auditApi } from '../api/endpoints'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
-import { useDirectory } from '../components/Directory'
+import { useDirectory } from '../context/DirectoryContext'
 import { EmptyState, ErrorAlert, Loading, PageHeader, UserPicker } from '../components/common'
 import { dateTime } from '../utils/format'
 
+// Backend table names -> labels for the "What changed" filter and the Record column
 const ENTITIES = {
   users: 'Users',
   projects: 'Projects',
@@ -24,11 +27,13 @@ const ENTITIES = {
 }
 const ACTION_COLORS = { INSERT: 'success', UPDATE: 'primary', DELETE: 'error', LOGIN: 'default', LOGIN_FAILED: 'warning' }
 const ACTION_LABELS = { INSERT: 'Created', UPDATE: 'Changed', DELETE: 'Deleted', LOGIN: 'Logged in', LOGIN_FAILED: 'Failed login' }
+// Bookkeeping fields that would only add noise to the details
 const HIDDEN_FIELDS = new Set(['created_at', 'updated_at', 'manager_role', 'member_role'])
 
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
 
-function show(value) {
+/** A logged field value as text: timestamps as local date and time, objects as JSON, missing as "—". */
+function formatValue(value) {
   if (value === null || value === undefined) return '—'
   if (typeof value === 'string' && TIMESTAMP.test(value)) return dateTime(value)
   return typeof value === 'object' ? JSON.stringify(value) : String(value)
@@ -71,7 +76,7 @@ function Changes({ entry }) {
         <Box key={key} sx={{ display: 'contents' }}>
           <Box component="dt" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>{key}</Box>
           <Box component="dd" sx={{ m: 0, overflowWrap: 'anywhere' }}>
-            {isUpdate && value && typeof value === 'object' && 'old' in value ? `${show(value.old)} → ${show(value.new)}` : show(value)}
+            {isUpdate && value && typeof value === 'object' && 'old' in value ? `${formatValue(value.old)} → ${formatValue(value.new)}` : formatValue(value)}
           </Box>
         </Box>
       ))}
@@ -79,6 +84,10 @@ function Changes({ entry }) {
   )
 }
 
+/**
+ * Admin-only log of every change and login, newest first, filterable by record
+ * type, record ID, who did it and date. The record ID filter waits for typing to pause.
+ */
 export default function AuditPage() {
   const directory = useDirectory()
   const [filters, setFilters] = useState({ entity: '', entity_id: '', actor_id: null, since: '', limit: 100 })

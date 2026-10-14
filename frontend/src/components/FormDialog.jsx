@@ -1,3 +1,5 @@
+/** Generic dialog wrapper for create/edit forms. */
+
 import { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack } from '@mui/material'
 import { ErrorAlert } from './common'

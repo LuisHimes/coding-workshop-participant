@@ -1,3 +1,5 @@
+/** Users screen (/users), shown as "Employees" to managers. */
+
 import { useState } from 'react'
 import {
   Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton,
@@ -8,17 +10,18 @@ import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { users as usersApi } from '../api/endpoints'
-import { useAuth, useRole } from '../auth/AuthContext'
+import { useAuth, useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
-import { useDirectory } from '../components/Directory'
-import { useNotify } from '../components/Notifications'
+import { useDirectory } from '../context/DirectoryContext'
+import { useNotify } from '../context/NotificationsContext'
 import FormDialog from '../components/FormDialog'
 import { ConfirmDialog, EmptyState, ErrorAlert, Loading, PageHeader, RoleChip, UserPicker } from '../components/common'
 import { ROLE_LABELS, fullName, money } from '../utils/format'
 
 const EMPTY_USER = { role: 'employee', first_name: '', last_name: '', email: '', job_title: '', salary: '', manager_id: null, temporary_password: '' }
 
+/** A read-only text field with a copy-to-clipboard button. */
 function CopyValue({ label, value }) {
   const notify = useNotify()
   return (
@@ -43,7 +46,7 @@ function CopyValue({ label, value }) {
   )
 }
 
-/** Shows a new user's ID and temporary password once, so the admin can pass them on. */
+/** Shows a user's email and temporary password once (after creating them or resetting their password), so the admin can pass them on. */
 function CredentialsDialog({ credentials, title, onClose }) {
   return (
     <Dialog open={Boolean(credentials)} onClose={onClose} maxWidth="xs" fullWidth>
@@ -67,6 +70,10 @@ function CredentialsDialog({ credentials, title, onClose }) {
   )
 }
 
+/**
+ * The fields of the new and edit user forms. Employees also need a salary and a manager;
+ * `creating` adds the optional temporary password.
+ */
 function UserFields({ form, setForm, managers, creating }) {
   const set = (field) => (e) => setForm({ ...form, [field]: e.target.value })
   const isEmployee = form.role === 'employee'
@@ -97,7 +104,8 @@ function UserFields({ form, setForm, managers, creating }) {
   )
 }
 
-function bodyFrom(form) {
+/** The form as an API request body: trimmed text, no salary as null, and a manager only for employees. */
+function userRequestBody(form) {
   return {
     role: form.role,
     first_name: form.first_name.trim(),
@@ -109,16 +117,21 @@ function bodyFrom(form) {
   }
 }
 
+/**
+ * Users list with search and filters. Admins ("Users") see everyone, including deactivated users, and
+ * click a row to edit, deactivate or reset a password; managers ("Employees") get a read-only list
+ * for staffing projects and teams.
+ */
 export default function UsersPage() {
   const { user: me } = useAuth()
   const { isAdmin } = useRole()
   const directory = useDirectory()
   const notify = useNotify()
-  const [q, setQ] = useState('')
+  const [searchText, setSearchText] = useState('')
   const [role, setRole] = useState('')
   const [managerId, setManagerId] = useState(null)
   const [includeInactive, setIncludeInactive] = useState(false)
-  const search = useDebounced(q.trim())
+  const search = useDebounced(searchText.trim())
   const { data, error, loading, reload } = useApiData(
     () => usersApi.list({ q: search || undefined, role: role || undefined, manager_id: managerId || undefined, include_inactive: includeInactive }),
     [search, role, managerId, includeInactive],
@@ -130,7 +143,8 @@ export default function UsersPage() {
   const [resetting, setResetting] = useState(null)
 
   const managers = directory.users.filter((u) => u.role === 'manager' && u.is_active)
-  const changed = () => { reload(); directory.refresh() }
+  // The directory holds user names, so it refreshes too
+  const refreshUsers = () => { reload(); directory.refresh() }
   const employeeIncomplete = form.role === 'employee' && (!form.manager_id || form.salary === '')
 
   return (
@@ -144,7 +158,7 @@ export default function UsersPage() {
       />
       <Card>
         <Stack direction="row" spacing={2} sx={{ p: 2, alignItems: 'center' }}>
-          <TextField id="user-search" placeholder="Search by name, email or ID" value={q} onChange={(e) => setQ(e.target.value)}
+          <TextField id="user-search" placeholder="Search by name, email or ID" value={searchText} onChange={(e) => setSearchText(e.target.value)}
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
             sx={{ maxWidth: 320 }} />
           <TextField id="user-role-filter" select label="Role" value={role} onChange={(e) => setRole(e.target.value)} sx={{ maxWidth: 160 }}
@@ -209,8 +223,8 @@ export default function UsersPage() {
 
       <FormDialog open={creating} title="New user" submitLabel="Create user" onClose={() => setCreating(false)} disabled={employeeIncomplete}
         onSubmit={async () => {
-          const created = await usersApi.create({ ...bodyFrom(form), temporary_password: form.temporary_password || null })
-          changed()
+          const created = await usersApi.create({ ...userRequestBody(form), temporary_password: form.temporary_password || null })
+          refreshUsers()
           setCredentials(created)
         }}>
         <Typography variant="body2" color="text.secondary">They'll log in with this email. The system generates a 6-character user ID for reference.</Typography>
@@ -220,9 +234,9 @@ export default function UsersPage() {
       <FormDialog open={Boolean(editing)} title={editing ? `${fullName(editing)} (${editing.id})` : ''} submitLabel="Save changes"
         onClose={() => setEditing(null)} disabled={employeeIncomplete}
         onSubmit={async () => {
-          await usersApi.update(editing.id, { ...bodyFrom(form), is_active: form.is_active })
+          await usersApi.update(editing.id, { ...userRequestBody(form), is_active: form.is_active })
           notify('User saved')
-          changed()
+          refreshUsers()
         }}>
         <UserFields form={form} setForm={setForm} managers={managers.filter((m) => m.id !== editing?.id)} />
         <FormControlLabel
@@ -239,7 +253,7 @@ export default function UsersPage() {
       <ConfirmDialog open={Boolean(resetting)} title="Reset password?" confirmLabel="Reset password"
         message={resetting && `${fullName(resetting)} gets a new temporary password and must choose a permanent one at their next login.`}
         onClose={() => setResetting(null)}
-        onConfirm={async () => { const result = await usersApi.resetPassword(resetting.id); setCredentials(result); changed() }} />
+        onConfirm={async () => { const result = await usersApi.resetPassword(resetting.id); setCredentials(result); refreshUsers() }} />
 
       <CredentialsDialog credentials={credentials} title="Login details" onClose={() => setCredentials(null)} />
     </>

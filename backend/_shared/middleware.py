@@ -22,7 +22,7 @@ import uuid
 from psycopg import OperationalError
 from psycopg import errors as pg_errors
 
-from service.errors import ConflictError, InvalidRequestError, NotFoundError, PermissionDeniedError, ServiceError
+from services.errors import ConflictError, InvalidRequestError, NotFoundError, PermissionDeniedError, ServiceError
 
 logger = logging.getLogger(__name__)
 

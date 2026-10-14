@@ -1,8 +1,10 @@
+/** Forced password change screen (/change-password) for users with a temporary password. */
+
 import { Box, Button, Card, CardContent, Typography } from '@mui/material'
-import { useAuth } from '../auth/AuthContext'
-import { useNotify } from '../components/Notifications'
+import { useAuth } from '../context/AuthContext'
+import { useNotify } from '../context/NotificationsContext'
 import PasswordForm from '../components/PasswordForm'
-import { ColorModeButton } from '../components/ColorMode'
+import { ColorModeButton } from '../components/ColorModeButton'
 
 /** Shown after logging in with a temporary password; nothing else is available until it's changed. */
 export default function ChangePasswordPage() {

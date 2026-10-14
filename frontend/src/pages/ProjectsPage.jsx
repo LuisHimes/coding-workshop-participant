@@ -1,3 +1,5 @@
+/** Projects list screen (/projects). */
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -7,26 +9,32 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import { milestones as milestonesApi, projects as projectsApi } from '../api/endpoints'
-import { useRole } from '../auth/AuthContext'
+import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
-import { useDirectory } from '../components/Directory'
+import { useDirectory } from '../context/DirectoryContext'
 import { EmptyState, ErrorAlert, Loading, PageHeader, ProjectStatusChip } from '../components/common'
 import ProjectFormDialog from '../components/ProjectFormDialog'
 import ProjectProgressBar from '../components/ProjectProgressBar'
 import { PROJECT_STATUS_LABELS, day, hours, money } from '../utils/format'
 
+// The All/Open/Archived toggle (admins only) -> the API's `archived` filter
 const ARCHIVED_FILTER = { all: undefined, open: false, archived: true }
 
+/**
+ * Searchable list of projects with a progress bar each. Admins see every project, can include or
+ * filter archived ones, and create projects; managers see the projects they manage; employees
+ * ("My projects") see the projects they work on, without budgets.
+ */
 export default function ProjectsPage() {
   const navigate = useNavigate()
   const directory = useDirectory()
   const { isAdmin, isEmployee } = useRole()
-  const [q, setQ] = useState('')
+  const [searchText, setSearchText] = useState('')
   const [status, setStatus] = useState('')
   const [archived, setArchived] = useState('all')
   const [creating, setCreating] = useState(false)
-  const search = useDebounced(q.trim())
+  const search = useDebounced(searchText.trim())
   const { data, error, loading, reload } = useApiData(
     () => projectsApi.list({ q: search || undefined, status: status || undefined, archived: ARCHIVED_FILTER[archived] }),
     [search, status, archived],
@@ -47,8 +55,8 @@ export default function ProjectsPage() {
           <TextField
             id="project-search"
             placeholder="Search by name or description"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
             sx={{ maxWidth: 360 }}
           />

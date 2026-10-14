@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from '../App'
-import { ColorModeButton } from '../components/ColorMode'
+import { ColorModeButton } from '../components/ColorModeButton'
 import { admin, respond } from './fakeApi'
 
 const STORAGE_KEY = 'project-tracker.color-mode'

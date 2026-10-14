@@ -5,14 +5,17 @@ const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
 // Two decimals so quarter hours show exactly (40.25 h, not 40.3 h)
 const hourNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
 
+/** Whole US dollars ("$50,000"), or "—" when missing. */
 export function money(value) {
   return value === null || value === undefined ? '—' : currency.format(Number(value))
 }
 
+/** Hours with up to two decimals ("40.25 h"), or "—" when missing. */
 export function hours(value) {
   return value === null || value === undefined ? '—' : `${hourNumber.format(Number(value))} h`
 }
 
+/** A percentage with up to one decimal ("62.5%"), or "—" when missing. */
 export function percent(value) {
   return value === null || value === undefined ? '—' : `${number.format(Number(value))}%`
 }
@@ -24,14 +27,17 @@ export function day(value) {
   return new Date(year, month - 1, date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+/** A timestamp in the browser's timezone ("Oct 13, 2026, 2:05 PM"), or "—" when missing. */
 export function dateTime(value) {
   return value ? new Date(value).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—'
 }
 
+/** "First Last" for a user, or an empty string when there is no user. */
 export function fullName(user) {
   return user ? `${user.first_name} ${user.last_name}` : ''
 }
 
+/** Today's date in the browser's timezone as "YYYY-MM-DD" (toISOString alone would use UTC). */
 export function todayIso() {
   const now = new Date()
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10)

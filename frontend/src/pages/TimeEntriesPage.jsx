@@ -1,14 +1,21 @@
+/** Hours screen (/time-entries). */
+
 import { useState } from 'react'
 import { Box, Button, Card, MenuItem, Stack, TextField } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { timeEntries as timeEntriesApi } from '../api/endpoints'
-import { useRole } from '../auth/AuthContext'
+import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
-import { useDirectory } from '../components/Directory'
+import { useDirectory } from '../context/DirectoryContext'
 import { ErrorAlert, Loading, PageHeader, UserPicker } from '../components/common'
 import TimeEntriesTable from '../components/TimeEntriesTable'
 import LogHoursDialog from '../components/LogHoursDialog'
 
+/**
+ * Logged hours with project and date filters. Employees see and log their own
+ * hours ("My hours"); managers see hours on their projects and can filter by
+ * employee; admins see everything and can correct or delete any entry.
+ */
 export default function TimeEntriesPage() {
   const directory = useDirectory()
   const { isAdmin, isEmployee } = useRole()

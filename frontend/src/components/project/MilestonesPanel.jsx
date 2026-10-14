@@ -1,3 +1,5 @@
+/** Project page "Milestones" tab: milestones in order, with their tasks and assignees. */
+
 import { useState } from 'react'
 import {
   Accordion, AccordionDetails, AccordionSummary, Box, Button, Checkbox, Chip, Divider, IconButton, List, ListItem,
@@ -10,15 +12,16 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { milestones as milestonesApi, projects as projectsApi } from '../../api/endpoints'
-import { useAuth, useRole } from '../../auth/AuthContext'
+import { useAuth, useRole } from '../../context/AuthContext'
 import { useApiData } from '../../hooks/useApiData'
-import { useDirectory } from '../Directory'
-import { useNotify } from '../Notifications'
+import { useDirectory } from '../../context/DirectoryContext'
+import { useNotify } from '../../context/NotificationsContext'
 import FormDialog from '../FormDialog'
 import ApplyTemplateDialog from './ApplyTemplateDialog'
 import { ConfirmDialog, EmptyState, ErrorAlert, Loading, MilestoneStatusChip, UserPicker } from '../common'
 import { day } from '../../utils/format'
 
+/** Title, description and dates, shared by the add and edit milestone dialogs. */
 function MilestoneForm({ form, setForm }) {
   const set = (field) => (e) => setForm({ ...form, [field]: e.target.value })
   const invalid = form.end_date && form.start_date && form.end_date < form.start_date
@@ -41,8 +44,9 @@ function MilestoneForm({ form, setForm }) {
  * Tasks and assignees of one milestone, loaded when it's expanded.
  * `canManage` (managers, admins): everything. `canWork` (employees): tick off
  * tasks and mark their own part finished, on milestones they're assigned to.
+ * `memberIds` are the project's members, the only people who can be assigned.
  */
-function MilestoneDetails({ milestone, members, canManage, canWork, onChanged }) {
+function MilestoneDetails({ milestone, memberIds, canManage, canWork, onChanged }) {
   const { user } = useAuth()
   const directory = useDirectory()
   const notify = useNotify()
@@ -50,13 +54,14 @@ function MilestoneDetails({ milestone, members, canManage, canWork, onChanged })
   const assignments = useApiData(() => milestonesApi.assignments.list(milestone.id), [milestone.id])
   const [newTask, setNewTask] = useState('')
   const [renaming, setRenaming] = useState(null)
-  const [title, setTitle] = useState('')
+  const [taskTitle, setTaskTitle] = useState('')
   const [assignee, setAssignee] = useState(null)
   const [actionError, setActionError] = useState(null)
   const completed = milestone.status === 'completed'
   const assignedToMe = (assignments.data || []).some((a) => a.user_id === user.id)
   const canTick = canManage || (canWork && assignedToMe)
 
+  // Runs a task or assignment change; a failure shows above both lists instead of in a dialog
   const run = async (action, message) => {
     setActionError(null)
     try {
@@ -68,7 +73,7 @@ function MilestoneDetails({ milestone, members, canManage, canWork, onChanged })
   }
 
   const assignedIds = new Set((assignments.data || []).map((a) => a.user_id))
-  const assignable = directory.users.filter((u) => members.includes(u.id) && !assignedIds.has(u.id))
+  const assignable = directory.users.filter((u) => memberIds.includes(u.id) && !assignedIds.has(u.id))
 
   return (
     <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: '1fr 1fr' }}>
@@ -86,7 +91,7 @@ function MilestoneDetails({ milestone, members, canManage, canWork, onChanged })
                 disableGutters
                 secondaryAction={canManage && !completed && (
                   <Stack direction="row">
-                    <Tooltip title="Rename"><IconButton size="small" onClick={() => { setTitle(task.title); setRenaming(task) }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                    <Tooltip title="Rename"><IconButton size="small" onClick={() => { setTaskTitle(task.title); setRenaming(task) }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     <Tooltip title="Delete"><IconButton size="small" onClick={() => run(async () => { await milestonesApi.tasks.remove(task.id); tasks.reload() }, 'Task deleted')}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                   </Stack>
                 )}
@@ -158,7 +163,7 @@ function MilestoneDetails({ milestone, members, canManage, canWork, onChanged })
           <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: 'flex-start' }}>
             <Box sx={{ flex: 1 }}>
               <UserPicker label="Assign a project member" options={assignable} value={assignee} onChange={setAssignee}
-                helperText={members.length === 0 ? 'Add employees to the project first' : ' '} />
+                helperText={memberIds.length === 0 ? 'Add employees to the project first' : ' '} />
             </Box>
             <Button variant="outlined" disabled={!assignee}
               onClick={() => run(async () => { await milestonesApi.assignments.add(milestone.id, assignee); setAssignee(null); assignments.reload(); onChanged() }, 'Assigned')}>
@@ -169,14 +174,18 @@ function MilestoneDetails({ milestone, members, canManage, canWork, onChanged })
       </Box>
 
       <FormDialog open={Boolean(renaming)} title="Rename task" onClose={() => setRenaming(null)}
-        onSubmit={async () => { await milestonesApi.tasks.update(renaming.id, { title: title.trim() }); tasks.reload() }}>
-        <TextField id="rename-task" label="Task" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        onSubmit={async () => { await milestonesApi.tasks.update(renaming.id, { title: taskTitle.trim() }); tasks.reload() }}>
+        <TextField id="rename-task" label="Task" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} required />
       </FormDialog>
     </Box>
   )
 }
 
-/** A project's milestones. Managers and admins plan and run them; employees work on theirs. */
+/**
+ * A project's milestones. Managers and admins plan and run them (add, edit,
+ * start, complete, delete, apply templates); employees work on theirs.
+ * `readOnly` (archived projects) hides every change.
+ */
 export default function MilestonesPanel({ project, readOnly }) {
   const notify = useNotify()
   const { isEmployee } = useRole()
@@ -248,7 +257,7 @@ export default function MilestonesPanel({ project, readOnly }) {
               </Stack>
             )}
             <Divider sx={{ mb: 2 }} />
-            <MilestoneDetails milestone={m} members={memberIds} canManage={canManage} canWork={!readOnly && isEmployee} onChanged={reload} />
+            <MilestoneDetails milestone={m} memberIds={memberIds} canManage={canManage} canWork={!readOnly && isEmployee} onChanged={reload} />
           </AccordionDetails>
         </Accordion>
       ))}

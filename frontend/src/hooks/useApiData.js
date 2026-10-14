@@ -1,3 +1,5 @@
+/** Hook for loading API data with loading, error and reload handling. */
+
 import { useCallback, useEffect, useState } from 'react'
 
 /**

@@ -88,6 +88,7 @@ class UserCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_employee_fields(self):
+        """Employees need a manager and a salary; other roles can't have a manager."""
         if self.role == "employee" and (self.manager_id is None or self.salary is None):
             raise ValueError("employees require a manager_id and a salary")
         if self.role != "employee" and self.manager_id is not None:

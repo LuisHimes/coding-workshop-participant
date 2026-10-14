@@ -1,10 +1,13 @@
+/** Login screen (/login), the only screen for visitors who aren't logged in. */
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../context/AuthContext'
 import { ErrorAlert } from '../components/common'
-import { ColorModeButton } from '../components/ColorMode'
+import { ColorModeButton } from '../components/ColorModeButton'
 
+/** Email and password login. Shows why the user was logged out (for example an expired session), if known. */
 export default function LoginPage() {
   const { login, notice } = useAuth()
   const navigate = useNavigate()

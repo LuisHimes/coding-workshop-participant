@@ -1,3 +1,5 @@
+/** Project page "Team" tab: project members and their planned hours. */
+
 import { useState } from 'react'
 import {
   Alert, Box, Button, IconButton, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -9,12 +11,13 @@ import AddIcon from '@mui/icons-material/Add'
 import GroupsIcon from '@mui/icons-material/Groups'
 import { projects as projectsApi, teams as teamsApi } from '../../api/endpoints'
 import { useApiData } from '../../hooks/useApiData'
-import { useDirectory } from '../Directory'
-import { useNotify } from '../Notifications'
+import { useDirectory } from '../../context/DirectoryContext'
+import { useNotify } from '../../context/NotificationsContext'
 import FormDialog from '../FormDialog'
 import { ConfirmDialog, EmptyState, ErrorAlert, Loading, UserPicker } from '../common'
 import { dateTime, fullName } from '../../utils/format'
 
+/** The notification after adding or changing someone: their planned hours across all projects, as a warning above 40 h/week. */
 function allocationMessage(name, member) {
   const total = Number(member.employee_hours_per_week)
   return member.over_limit
@@ -22,16 +25,21 @@ function allocationMessage(name, member) {
     : [`${name} is planned for ${total} h/week across their projects.`, 'success']
 }
 
+/**
+ * Who works on the project and their planned weekly hours. Managers and admins
+ * can add employees one by one or a whole team, change hours and remove people;
+ * `readOnly` (employees, archived projects) hides those actions.
+ */
 export default function TeamPanel({ project, readOnly }) {
   const directory = useDirectory()
   const notify = useNotify()
   const { data: members, error, loading, reload } = useApiData(() => projectsApi.members.list(project.id), [project.id])
-  const [adding, setAdding] = useState(false)
+  const [addingEmployee, setAddingEmployee] = useState(false)
   const [addingTeam, setAddingTeam] = useState(false)
   const [editing, setEditing] = useState(null)
   const [removing, setRemoving] = useState(null)
   const [newMember, setNewMember] = useState({ user_id: null, hours: '40' })
-  const [hours, setHours] = useState('')
+  const [editedHours, setEditedHours] = useState('')
   const [teamForm, setTeamForm] = useState({ team_id: '', hours: '40' })
   const teamList = useApiData(() => (addingTeam ? teamsApi.list({}) : Promise.resolve([])), [addingTeam])
 
@@ -42,7 +50,7 @@ export default function TeamPanel({ project, readOnly }) {
     <Box>
       {!readOnly && (
         <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', rowGap: 1 }}>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setNewMember({ user_id: null, hours: '40' }); setAdding(true) }}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setNewMember({ user_id: null, hours: '40' }); setAddingEmployee(true) }}>
             Add employee
           </Button>
           <Button variant="outlined" startIcon={<GroupsIcon />} onClick={() => { setTeamForm({ team_id: '', hours: '40' }); setAddingTeam(true) }}>
@@ -86,7 +94,7 @@ export default function TeamPanel({ project, readOnly }) {
                     {!readOnly && (
                       <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                         <Tooltip title="Change planned hours">
-                          <IconButton size="small" onClick={() => { setHours(String(Number(member.hours_per_week))); setEditing(member) }}>
+                          <IconButton size="small" onClick={() => { setEditedHours(String(Number(member.hours_per_week))); setEditing(member) }}>
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -104,10 +112,10 @@ export default function TeamPanel({ project, readOnly }) {
       )}
 
       <FormDialog
-        open={adding}
+        open={addingEmployee}
         title="Add an employee"
         submitLabel="Add to project"
-        onClose={() => setAdding(false)}
+        onClose={() => setAddingEmployee(false)}
         disabled={!newMember.user_id}
         onSubmit={async () => {
           const member = await projectsApi.members.add(project.id, newMember.user_id, newMember.hours)
@@ -162,13 +170,13 @@ export default function TeamPanel({ project, readOnly }) {
         title={`Planned hours for ${editing ? fullName(directory.user(editing.user_id)) || editing.user_id : ''}`}
         onClose={() => setEditing(null)}
         onSubmit={async () => {
-          const member = await projectsApi.members.update(project.id, editing.user_id, hours)
+          const member = await projectsApi.members.update(project.id, editing.user_id, editedHours)
           notify(...allocationMessage(directory.userName(member.user_id), member))
           reload()
         }}
       >
-        <TextField id="edit-member-hours" label="Hours per week" type="number" value={hours} required
-          onChange={(e) => setHours(e.target.value)} slotProps={{ htmlInput: { min: 0.5, max: 40, step: 0.5 } }} />
+        <TextField id="edit-member-hours" label="Hours per week" type="number" value={editedHours} required
+          onChange={(e) => setEditedHours(e.target.value)} slotProps={{ htmlInput: { min: 0.5, max: 40, step: 0.5 } }} />
       </FormDialog>
 
       <ConfirmDialog

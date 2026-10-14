@@ -23,11 +23,13 @@ export function parseDay(iso) {
   return new Date(year, month - 1, date)
 }
 
+/** A Date -> "YYYY-MM-DD" in local time. */
 export function isoDay(date) {
   const pad = (n) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+/** The calendar day `days` after `date` (negative goes back); safe across daylight-saving changes. */
 export function addDays(date, days) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days)
 }

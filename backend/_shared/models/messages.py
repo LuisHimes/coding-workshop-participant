@@ -22,11 +22,15 @@ CREATE INDEX IF NOT EXISTS messages_created_idx ON messages (created_at DESC, id
 
 
 class MessageCreate(BaseModel):
+    """A new post: to a project's board, or to everyone when project_id is left out (admins only)."""
+
     project_id: int | None = None
     body: str = Field(min_length=1, max_length=5000)
 
 
 class Message(BaseModel):
+    """A message board post with its author's name."""
+
     id: int
     project_id: int | None
     author_id: str

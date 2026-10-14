@@ -1,3 +1,5 @@
+/** Small building blocks shared by many screens: headers, loading and error states, status chips, pickers. */
+
 import { useState } from 'react'
 import {
   Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
@@ -7,6 +9,7 @@ import {
   MILESTONE_STATUS_LABELS, PROJECT_STATUS_LABELS, RISK_LABELS, ROLE_LABELS, fullName,
 } from '../utils/format'
 
+/** A screen's title row: optional `back` link above, `subtitle` below, and `actions` (buttons) on the right. */
 export function PageHeader({ title, subtitle, actions, back }) {
   return (
     <Stack direction="row" spacing={2} sx={{ mb: 3, alignItems: 'flex-end' }}>
@@ -30,6 +33,7 @@ export function PageHeader({ title, subtitle, actions, back }) {
   )
 }
 
+/** An API error's message in a red alert, with "Try again" when `onRetry` is given. Renders nothing without an error. */
 export function ErrorAlert({ error, onRetry }) {
   if (!error) return null
   return (
@@ -43,6 +47,7 @@ export function ErrorAlert({ error, onRetry }) {
   )
 }
 
+/** A spinner with a short label, shown while data loads. */
 export function Loading({ label = 'Loading…' }) {
   return (
     <Stack direction="row" spacing={1.5} sx={{ py: 6, justifyContent: 'center', alignItems: 'center', color: 'text.secondary' }}>
@@ -52,6 +57,7 @@ export function Loading({ label = 'Loading…' }) {
   )
 }
 
+/** A centered message for an empty list, with optional help text as `children`. */
 export function EmptyState({ title, children }) {
   return (
     <Box sx={{ py: 5, px: 2, textAlign: 'center', color: 'text.secondary' }}>
@@ -109,6 +115,7 @@ const MILESTONE_STATUS_COLORS = { not_started: 'default', in_progress: 'primary'
 const RISK_COLORS = { on_track: 'success', at_risk: 'warning', off_track: 'error' }
 const ROLE_COLORS = { admin: 'secondary', manager: 'primary', employee: 'default' }
 
+/** A project's status, plus an "Archived" chip when it is archived. */
 export function ProjectStatusChip({ project }) {
   return (
     <Stack direction="row" useFlexGap sx={{ gap: 0.5, flexWrap: 'wrap' }}>
@@ -120,10 +127,12 @@ export function ProjectStatusChip({ project }) {
   )
 }
 
+/** A milestone's status as a colored chip. */
 export function MilestoneStatusChip({ status }) {
   return <Chip size="small" label={MILESTONE_STATUS_LABELS[status]} color={MILESTONE_STATUS_COLORS[status]} />
 }
 
+/** A project's risk level; hovering lists the reasons behind it. */
 export function RiskChip({ risk }) {
   const chip = <Chip size="small" label={RISK_LABELS[risk.level]} color={RISK_COLORS[risk.level]} />
   if (!risk.reasons?.length) return chip
@@ -134,10 +143,12 @@ export function RiskChip({ risk }) {
   )
 }
 
+/** A user's role (Admin, Manager, Employee) as a chip. */
 export function RoleChip({ role }) {
   return <Chip size="small" label={ROLE_LABELS[role]} color={ROLE_COLORS[role]} variant={role === 'employee' ? 'outlined' : 'filled'} />
 }
 
+/** Weekly hours ("32 h/week"), highlighted with "overtime" when `overLimit`. */
 export function HoursChip({ hours, overLimit, label }) {
   return (
     <Chip

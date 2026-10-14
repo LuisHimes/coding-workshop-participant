@@ -193,12 +193,15 @@ class MilestoneCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_dates(self):
+        """Rejects an end date before the start date."""
         if self.end_date < self.start_date:
             raise ValueError("end_date must be on or after start_date")
         return self
 
 
 class MilestoneUpdate(BaseModel):
+    """Managers and admins: change a milestone's details or status. Only the fields sent are changed."""
+
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
     start_date: date | None = None
@@ -207,6 +210,8 @@ class MilestoneUpdate(BaseModel):
 
 
 class Milestone(BaseModel):
+    """A milestone (deliverable) of a project."""
+
     id: int
     project_id: int
     sequence: int
@@ -221,15 +226,21 @@ class Milestone(BaseModel):
 
 
 class MilestoneTaskCreate(BaseModel):
+    """A new task on a milestone."""
+
     title: str = Field(min_length=1, max_length=200)
 
 
 class MilestoneTaskUpdate(BaseModel):
+    """Rename a task (managers and admins) or tick it off."""
+
     title: str | None = Field(default=None, min_length=1, max_length=200)
     is_done: bool | None = None
 
 
 class MilestoneTask(BaseModel):
+    """A task on a milestone, with who ticked it off and when."""
+
     id: int
     milestone_id: int
     title: str
@@ -241,6 +252,8 @@ class MilestoneTask(BaseModel):
 
 
 class MilestoneAssignmentCreate(BaseModel):
+    """Assign a project member to a milestone."""
+
     user_id: str = Field(pattern=r"^[A-Za-z0-9]{6}$")
 
 
@@ -251,6 +264,8 @@ class MilestoneAssignmentUpdate(BaseModel):
 
 
 class MilestoneAssignment(BaseModel):
+    """An employee assigned to a milestone; finished_at is set once their part is done."""
+
     id: int
     milestone_id: int
     project_id: int

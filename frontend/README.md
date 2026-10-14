@@ -67,24 +67,29 @@ Employees never see salaries, budgets or costs; the backend leaves them out of e
 ```
 frontend/
 ├── index.html                # The single page
-├── vite.config.js            # Dev server (port 3000) and test settings
+├── vite.config.js            # Dev server (port 3000), build chunks and test settings
 └── src/
     ├── main.jsx              # Entry point
-    ├── App.jsx               # Providers and routes
-    ├── theme.js              # Material UI light and dark themes (chosen in components/ColorMode.jsx)
+    ├── App.jsx               # Providers, lazy-loaded screens and routes per role
+    ├── theme.js              # Material UI light and dark themes (chosen in context/ColorModeContext.jsx)
     ├── api/
     │   ├── client.js         # fetch wrapper: base URL, token, error messages
     │   └── endpoints.js      # Every backend endpoint, grouped by feature Lambda
-    ├── auth/AuthContext.jsx  # Login, session restore, logout on 401
-    ├── components/           # Layout, dialogs, tables, message board, shared pieces
+    ├── context/              # App-wide state, each a provider plus its hook
+    │   ├── AuthContext.jsx           # Login, session restore, logout on 401, role checks (useAuth, useRole)
+    │   ├── ColorModeContext.jsx      # Light/dark mode (useColorMode)
+    │   ├── DirectoryContext.jsx      # Users and projects by ID, to show names (useDirectory)
+    │   └── NotificationsContext.jsx  # Snackbar confirmations and warnings (useNotify)
+    ├── components/           # Layout, dialogs, tables, message board, shared pieces (common.jsx)
     │   └── project/          # Project page panels: team, milestones, deliverables
     ├── hooks/                # useApiData (loading and errors), useDebounced
     ├── pages/                # One component per screen
     ├── utils/format.js       # Money, hours, dates, labels
     ├── utils/milestones.js   # Milestone states (incl. overdue) and calendar-day helpers
-    ├── test/                 # Fake API, test setup, and tests by area: projects, people (users, teams,
-    │                         #   audit, auth, API client), work (hours, messages, reports)
-    └── App.test.jsx          # Renders every screen against the fake API
+    ├── utils/prefetch.js     # Downloads the other screens in the background once the browser is idle
+    └── test/                 # Fake API, test setup, and tests by area: App (every screen renders), projects,
+                              #   people (users, teams, audit, auth, API client), work (hours, messages,
+                              #   reports), templates, color mode, prefetch
 ```
 
 **Changing a backend endpoint** means editing [src/api/endpoints.js](src/api/endpoints.js) only. Requests go to `${VITE_API_URL}/api/<feature>/<path>`: locally `VITE_API_URL` is the dev proxy (`http://localhost:3001`), on AWS it is the CloudFront domain. `./bin/generate-env.sh` writes it to `.env.local`.

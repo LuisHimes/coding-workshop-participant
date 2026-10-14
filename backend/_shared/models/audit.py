@@ -83,6 +83,8 @@ END $$;
 
 
 class AuditEntry(BaseModel):
+    """One audit log entry: who did what to which record, and the changed values."""
+
     id: int
     occurred_at: datetime
     actor_id: str | None
