@@ -102,6 +102,8 @@ resource "aws_cloudfront_distribution" "this" {
   default_cache_behavior {
     allowed_methods = ["GET", "HEAD", "OPTIONS"]
     cached_methods  = ["GET", "HEAD"]
+    # gzip or Brotli for browsers that accept it (the JavaScript shrinks to about a third)
+    compress        = true
 
     default_ttl = 3600
     max_ttl     = 86400

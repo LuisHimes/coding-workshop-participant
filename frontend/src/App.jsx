@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ColorModeProvider } from './components/ColorMode'
 import { AuthProvider, useAuth } from './auth/AuthContext'
@@ -6,20 +7,21 @@ import { DirectoryProvider } from './components/Directory'
 import { Loading } from './components/common'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
-import ChangePasswordPage from './pages/ChangePasswordPage'
-import DashboardPage from './pages/DashboardPage'
-import ProjectsPage from './pages/ProjectsPage'
-import ProjectDetailPage from './pages/ProjectDetailPage'
-import UsersPage from './pages/UsersPage'
-import TeamsPage from './pages/TeamsPage'
-import TeamDetailPage from './pages/TeamDetailPage'
-import MilestoneTemplatesPage from './pages/MilestoneTemplatesPage'
-import ReportsPage from './pages/ReportsPage'
-import TimeEntriesPage from './pages/TimeEntriesPage'
-import AuditPage from './pages/AuditPage'
-import ProfilePage from './pages/ProfilePage'
-import EmployeeHomePage from './pages/EmployeeHomePage'
-import CalendarPage from './pages/CalendarPage'
+// Each screen downloads the first time it's opened; the login page is part of the first download
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'))
+const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'))
+const UsersPage = lazy(() => import('./pages/UsersPage'))
+const TeamsPage = lazy(() => import('./pages/TeamsPage'))
+const TeamDetailPage = lazy(() => import('./pages/TeamDetailPage'))
+const MilestoneTemplatesPage = lazy(() => import('./pages/MilestoneTemplatesPage'))
+const ReportsPage = lazy(() => import('./pages/ReportsPage'))
+const TimeEntriesPage = lazy(() => import('./pages/TimeEntriesPage'))
+const AuditPage = lazy(() => import('./pages/AuditPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const EmployeeHomePage = lazy(() => import('./pages/EmployeeHomePage'))
+const CalendarPage = lazy(() => import('./pages/CalendarPage'))
 
 /** Single-page app: React Router swaps screens in the browser; the server always serves index.html. */
 function AppRoutes() {
@@ -88,7 +90,9 @@ export default function App() {
       <NotificationProvider>
         <AuthProvider>
           <BrowserRouter>
-            <AppRoutes />
+            <Suspense fallback={<Loading />}>
+              <AppRoutes />
+            </Suspense>
           </BrowserRouter>
         </AuthProvider>
       </NotificationProvider>

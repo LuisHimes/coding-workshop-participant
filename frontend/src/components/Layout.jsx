@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   AppBar, Avatar, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Menu,
@@ -16,6 +16,7 @@ import HistoryIcon from '@mui/icons-material/History'
 import { useAuth } from '../auth/AuthContext'
 import { ColorModeButton } from './ColorMode'
 import { ROLE_LABELS } from '../utils/format'
+import { Loading } from './common'
 
 const DRAWER_WIDTH = 232
 
@@ -121,7 +122,9 @@ export default function Layout() {
       <Box component="main" sx={{ flex: 1, minWidth: 0, px: 3, pb: 6 }}>
         <Toolbar />
         <Box sx={{ maxWidth: 1280, mx: 'auto', pt: 3 }}>
-          <Outlet />
+          <Suspense fallback={<Loading />}>
+            <Outlet />
+          </Suspense>
         </Box>
       </Box>
     </Box>

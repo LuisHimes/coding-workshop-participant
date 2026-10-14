@@ -149,8 +149,11 @@ if [ ! -f .env ] && [ -f $BUILD_DIR/.env.local ]; then
     mv -f $BUILD_DIR/.env.local $BUILD_DIR/.env
 fi
 
-# Upload built frontend to S3 (with deletion of old files)
-aws s3 sync $BUILD_DIR/ s3://$BUCKET_NAME/ --delete $AWS_ENDPOINT
+# Upload built frontend to S3 (with deletion of old files). Files in assets/ have a content hash in their
+# name, so browsers may keep them for a year; index.html is always rechecked so new deploys show at once.
+aws s3 sync $BUILD_DIR/assets/ s3://$BUCKET_NAME/assets/ --delete --cache-control "public, max-age=31536000, immutable" $AWS_ENDPOINT
+aws s3 sync $BUILD_DIR/ s3://$BUCKET_NAME/ --delete --exclude "assets/*" --exclude "index.html" --cache-control "public, max-age=3600" $AWS_ENDPOINT
+aws s3 cp $BUILD_DIR/index.html s3://$BUCKET_NAME/index.html --cache-control "no-cache" $AWS_ENDPOINT
 
 # Invalidate CloudFront cache for AWS deployments
 if [ "$ENVIRONMENT" = "aws" ]; then
