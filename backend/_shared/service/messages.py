@@ -8,13 +8,14 @@ The home page message board.
   reassigned, so the new manager sees the previous manager's posts, with
   their name.
 - Authors delete their own posts; admins delete any post.
+- Archived projects' boards are read-only, like the rest of the project.
 """
 
 from models.messages import Message, MessageCreate
 from repository.messages import MessageRepository
 from repository.projects import ProjectRepository
 from service.base import is_admin, is_employee
-from service.errors import NotFoundError, PermissionDeniedError, database_rules
+from service.errors import ConflictError, NotFoundError, PermissionDeniedError, database_rules
 from service.projects import ProjectService
 
 
@@ -29,8 +30,8 @@ class MessageService:
         if data.project_id is None:
             if not is_admin(actor):
                 raise PermissionDeniedError("Only admins can post announcements to everyone")
-        else:
-            self.project_service.get_visible(actor, data.project_id)
+        elif self.project_service.get_visible(actor, data.project_id)["archived_at"] is not None:
+            raise ConflictError("Archived projects can't be changed; unarchive it first")
         with database_rules():
             return Message.model_validate(self.messages.create(actor["id"], data.body, data.project_id))
 

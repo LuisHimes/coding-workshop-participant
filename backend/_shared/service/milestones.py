@@ -22,7 +22,7 @@ from models.milestones import (
 )
 from repository.milestones import MilestoneRepository
 from repository.projects import ProjectRepository
-from service.base import is_admin, is_employee
+from service.base import is_employee
 from service.errors import ConflictError, InvalidRequestError, NotFoundError, PermissionDeniedError, database_rules
 from service.projects import ProjectService
 
@@ -114,7 +114,8 @@ class MilestoneService:
         task = self.milestones.get_task(task_id)
         if task is None:
             raise NotFoundError("Task not found")
-        milestone, project = self._visible_milestone(actor, task["milestone_id"])
+        # Employees can't see archived projects, so this already rules those out
+        milestone, _ = self._visible_milestone(actor, task["milestone_id"])
         values = data.model_dump(exclude_unset=True)
 
         if is_employee(actor):
@@ -122,8 +123,6 @@ class MilestoneService:
                 raise PermissionDeniedError("Employees can only mark tasks done or not done")
             if not self.milestones.is_assigned(milestone["id"], actor["id"]):
                 raise PermissionDeniedError("You can only update tasks on milestones you are assigned to")
-            if project["archived_at"] is not None:
-                raise ConflictError("This project is no longer open")
         else:
             self.project_service.get_manageable(actor, milestone["project_id"])
 
@@ -168,13 +167,11 @@ class MilestoneService:
         another) or not. Employees can do this for themselves; managers and
         admins for anyone on the milestone.
         """
-        milestone, project = self._visible_milestone(actor, milestone_id)
+        # Managers only see their own projects, so visibility is the manager check
+        self._visible_milestone(actor, milestone_id)
         user_id = user_id.upper()
-        if is_employee(actor):
-            if user_id != actor["id"]:
-                raise PermissionDeniedError("You can only mark your own part finished")
-        elif not (is_admin(actor) or project["manager_id"] == actor["id"]):
-            raise PermissionDeniedError("Only the project's manager or an admin can change this")
+        if is_employee(actor) and user_id != actor["id"]:
+            raise PermissionDeniedError("You can only mark your own part finished")
         with database_rules():
             assignment = self.milestones.set_finished(milestone_id, user_id, finished)
         if assignment is None:

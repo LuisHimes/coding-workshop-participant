@@ -230,3 +230,92 @@ def test_deleting_archives_and_admins_still_see_archived_projects(client, admin)
 
     restored = check(client.post(f"/projects/{gone}/unarchive", headers=admin))
     assert (restored["archived"], restored["archive_reason"]) == (False, None)
+
+
+def test_milestone_task_and_assignment_routes(client, admin):
+    mia, as_mia = new_user(client, admin, "manager", "Mia")
+    ann, as_ann = new_user(client, admin, "employee", "Ann", mia)
+    pid = check(client.post("/projects", headers=admin, json={
+        "name": "X", "manager_id": mia, "start_date": str(TODAY), "projected_end_date": str(TODAY + timedelta(days=9)),
+        "allocated_hours": 10}), 201)["id"]
+    check(client.post(f"/projects/{pid}/members", headers=as_mia, json={"user_id": ann}), 201)
+    milestone = check(client.post(f"/projects/{pid}/milestones", headers=as_mia, json={
+        "sequence": 1, "title": "M", "start_date": str(TODAY), "end_date": str(TODAY)}), 201)
+    mid = milestone["id"]
+    task = check(client.post(f"/milestones/{mid}/tasks", headers=as_mia, json={"title": "T"}), 201)
+    check(client.post(f"/milestones/{mid}/assignments", headers=as_mia, json={"user_id": ann.lower()}), 201)
+
+    assert [t["id"] for t in check(client.get(f"/milestones/{mid}/tasks", headers=as_ann))] == [task["id"]]
+    assert [a["user_id"] for a in check(client.get(f"/milestones/{mid}/assignments", headers=as_ann))] == [ann]
+    finished = check(client.patch(f"/milestones/{mid}/assignments/{ann}", headers=as_ann, json={"finished": True}))
+    assert finished["finished_at"] is not None
+    check(client.patch(f"/milestones/{mid}/assignments/{mia}", headers=as_ann, json={"finished": True}), 403)
+    check(client.delete(f"/milestones/{mid}/assignments/{ann}", headers=as_ann), 403)
+    assert client.delete(f"/milestones/{mid}/assignments/{ann}", headers=as_mia).status_code == 204
+    check(client.delete(f"/milestones/{mid}/assignments/{ann}", headers=as_mia), 404)
+    assert check(client.get("/milestones/active", headers=as_ann)) is None
+
+
+def test_time_entry_routes(client, admin):
+    mia, as_mia = new_user(client, admin, "manager", "Mia")
+    ann, as_ann = new_user(client, admin, "employee", "Ann", mia)
+    pid = check(client.post("/projects", headers=admin, json={
+        "name": "X", "manager_id": mia, "start_date": str(TODAY), "projected_end_date": str(TODAY),
+        "allocated_hours": 10}), 201)["id"]
+    check(client.post(f"/projects/{pid}/members", headers=as_mia, json={"user_id": ann}), 201)
+    check(client.post("/time-entries", headers=as_ann, json={
+        "project_id": pid, "work_date": str(TODAY), "hours": "24.25"}), 422)  # at most 24 h a day
+    entry = check(client.post("/time-entries", headers=as_ann, json={
+        "project_id": pid, "work_date": str(TODAY), "hours": "8"}), 201)
+
+    listed = check(client.get("/time-entries", headers=as_mia, params={"start": str(TODAY), "end": str(TODAY)}))
+    assert [e["id"] for e in listed] == [entry["id"]]
+    updated = check(client.patch(f"/time-entries/{entry['id']}", headers=as_ann, json={"hours": "7.5"}))
+    assert (updated["hours"], updated["week_hours"], updated["over_limit"]) == ("7.50", "7.50", False)
+    check(client.patch(f"/time-entries/{entry['id']}", headers=as_mia, json={"hours": "1"}), 404)
+    check(client.post("/time-entries", headers=as_mia, json={
+        "project_id": pid, "work_date": str(TODAY), "hours": "1"}), 403)  # only employees log hours
+    assert client.delete(f"/time-entries/{entry['id']}", headers=as_ann).status_code == 204
+    assert check(client.get("/time-entries", headers=as_ann)) == []
+
+
+def test_project_member_routes(client, admin):
+    mia, as_mia = new_user(client, admin, "manager", "Mia")
+    ann, as_ann = new_user(client, admin, "employee", "Ann", mia)
+    pid = check(client.post("/projects", headers=admin, json={
+        "name": "X", "manager_id": mia, "start_date": str(TODAY), "projected_end_date": str(TODAY),
+        "allocated_hours": 10}), 201)["id"]
+    check(client.post(f"/projects/{pid}/members", headers=as_mia, json={"user_id": ann, "hours_per_week": 20}), 201)
+    assert [m["user_id"] for m in check(client.get(f"/projects/{pid}/members", headers=as_ann))] == [ann]
+    updated = check(client.patch(f"/projects/{pid}/members/{ann}", headers=as_mia, json={"hours_per_week": 40}))
+    assert (updated["hours_per_week"], updated["over_limit"]) == ("40.0", False)
+    # One project can never plan more than a full week for one employee
+    check(client.patch(f"/projects/{pid}/members/{ann}", headers=as_mia, json={"hours_per_week": 40.5}), 422)
+    check(client.patch(f"/projects/{pid}/members/{ann}", headers=as_mia, json={"hours_per_week": 0}), 422)
+    check(client.patch(f"/projects/{pid}/members/{ann}", headers=as_ann, json={"hours_per_week": 10}), 403)
+
+
+def test_report_routes_for_risk_and_over_allocation(client, admin):
+    mia, as_mia = new_user(client, admin, "manager", "Mia")
+    ann, as_ann = new_user(client, admin, "employee", "Ann", mia)
+    project = {"manager_id": mia, "start_date": str(TODAY - timedelta(days=5)),
+               "projected_end_date": str(TODAY + timedelta(days=5)), "allocated_hours": 10}
+    first = check(client.post("/projects", headers=admin, json={**project, "name": "First"}), 201)["id"]
+    second = check(client.post("/projects", headers=admin, json={**project, "name": "Second"}), 201)["id"]
+    check(client.post(f"/projects/{first}/members", headers=as_mia, json={"user_id": ann, "hours_per_week": 40}), 201)
+    assert check(client.get("/reports/over-allocated", headers=as_mia)) == []  # exactly 40 is fine
+    check(client.post(f"/projects/{second}/members", headers=as_mia, json={"user_id": ann, "hours_per_week": 1}), 201)
+    assert [a["user_id"] for a in check(client.get("/reports/over-allocated", headers=as_mia))] == [ann]
+
+    # Both started without milestones, so both are at risk
+    assert {p["project_id"] for p in check(client.get("/reports/at-risk", headers=as_mia))} == {first, second}
+    check(client.get("/reports/at-risk", headers=as_ann), 403)
+
+
+def test_admin_resets_a_password_over_http(client, admin):
+    mia, as_mia = new_user(client, admin, "manager", "Mia")
+    reset = check(client.post(f"/users/{mia.lower()}/reset-password", headers=admin))
+    assert reset["user"]["must_change_password"] is True
+    check(client.get("/projects", headers=log_in(client, "mia@example.com", reset["temporary_password"])), 403)
+    check(client.post(f"/users/{mia}/reset-password", headers=as_mia), 403)
+    check(client.post("/users/NOBODY/reset-password", headers=admin), 404)

@@ -14,6 +14,8 @@ from psycopg import errors
 from pydantic import ValidationError
 
 from repository.audit import AuditRepository
+from models.projects import ProjectCreate, ProjectMemberCreate, ProjectMemberUpdate
+from models.teams import TeamProjectAssignment
 from models.users import UserCreate
 
 
@@ -132,6 +134,13 @@ def test_user_create_schema_requires_manager_for_employees():
                    job_title="Engineer", salary=Decimal("1"), temporary_password="temporary1")
 
 
+@pytest.mark.parametrize("role", ["manager", "admin"])
+def test_user_create_schema_gives_managers_only_to_employees(role):
+    with pytest.raises(ValidationError, match="only employees can be assigned a manager"):
+        UserCreate(role=role, first_name="A", last_name="B", email="a@b.co", job_title="Lead", manager_id="ABC123")
+    assert UserCreate(role=role, first_name="A", last_name="B", email="a@b.co", job_title="Lead").manager_id is None
+
+
 # Projects
 
 
@@ -177,6 +186,33 @@ def test_project_completes_only_when_all_milestones_complete(db, team):
     db.execute("UPDATE projects SET archived_at = now(), archive_reason = 'completed' "
                "WHERE id = %s", (project,))
 
+
+def test_project_create_schema_allows_one_day_projects_but_not_reversed_dates():
+    fields = {"name": "P", "manager_id": "ABC123", "allocated_hours": 1}
+    assert ProjectCreate(**fields, start_date=date(2026, 3, 1), projected_end_date=date(2026, 3, 1))
+    with pytest.raises(ValidationError, match="projected_end_date must be on or after start_date"):
+        ProjectCreate(**fields, start_date=date(2026, 3, 2), projected_end_date=date(2026, 3, 1))
+
+
+def test_member_schema_caps_one_project_at_a_full_week():
+    assert ProjectMemberCreate(user_id="ABC123").hours_per_week == 40  # defaults to full time
+    assert ProjectMemberCreate(user_id="ABC123", hours_per_week=Decimal("40")).hours_per_week == 40
+    for hours in (Decimal("40.25"), Decimal("0")):
+        with pytest.raises(ValidationError):
+            ProjectMemberCreate(user_id="ABC123", hours_per_week=hours)
+
+
+
+@pytest.mark.parametrize("schema", [
+    lambda hours: ProjectMemberCreate(user_id="ABC123", hours_per_week=hours),
+    lambda hours: ProjectMemberUpdate(hours_per_week=hours),
+    lambda hours: TeamProjectAssignment(team_id=1, hours_per_week=hours),
+])
+def test_planned_hours_allow_one_decimal_place_like_the_column(schema):
+    # hours_per_week is NUMERIC(4, 1): 10.25 would be silently stored as 10.3
+    assert schema(Decimal("10.5")).hours_per_week == Decimal("10.5")
+    with pytest.raises(ValidationError, match="decimal place"):
+        schema(Decimal("10.25"))
 
 # Milestones
 

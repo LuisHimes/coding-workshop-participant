@@ -192,6 +192,69 @@ def test_admin_resets_passwords(svc, org):
     assert verify_password(reset.temporary_password, svc.user_repo.get_credentials(org.ann["id"])["password_hash"])
 
 
+def test_user_admin_actions_on_unknown_users(svc, org):
+    with pytest.raises(NotFoundError):
+        svc.users.update_user(org.admin, "NOBODY", UserUpdate(job_title="Ghost"))
+    with pytest.raises(NotFoundError):
+        svc.users.reset_password(org.admin, "nobody")
+    with pytest.raises(NotFoundError):
+        svc.users.get_user(org.admin, "NOBODY")
+
+
+def test_role_changes_keep_employee_rules(svc, org):
+    second = svc.users.create_user(org.admin, UserCreate(
+        role="admin", first_name="Sam", last_name="Second", email="sam@example.com", job_title="Admin")).user
+    # A manager becoming an employee needs a manager of their own
+    with pytest.raises(InvalidRequestError, match="assigned to a manager"):
+        svc.users.update_user(org.admin, org.max["id"], UserUpdate(role="employee"))
+    # Admins have no salary, so one becoming an employee must be given one
+    with pytest.raises(InvalidRequestError, match="must have a salary"):
+        svc.users.update_user(org.admin, second.id, UserUpdate(role="employee", manager_id=org.mia["id"]))
+    demoted = svc.users.update_user(org.admin, second.id, UserUpdate(
+        role="employee", manager_id=org.mia["id"].lower(), salary=Decimal("90000")))
+    assert (demoted.role, demoted.manager_id, demoted.salary) == ("employee", org.mia["id"], Decimal("90000"))
+    # Promoting an employee clears their manager: only employees report to one
+    promoted = svc.users.update_user(org.admin, org.ann["id"], UserUpdate(role="manager"))
+    assert (promoted.role, promoted.manager_id) == ("manager", None)
+
+
+def test_admins_can_edit_themselves_without_losing_admin(svc, org):
+    updated = svc.users.update_user(org.admin, org.admin["id"].lower(), UserUpdate(job_title="Head of IT", is_active=True))
+    assert updated.job_title == "Head of IT"
+    with pytest.raises(ConflictError):
+        svc.users.update_user(org.admin, org.admin["id"], UserUpdate(role="manager"))
+
+
+def test_deactivated_users_are_hidden_and_cannot_be_staffed(svc, org):
+    svc.users.update_user(org.admin, org.ben["id"], UserUpdate(is_active=False))
+    assert org.ben["id"] not in {u.id for u in svc.users.list_users(org.mia)}
+    assert org.ben["id"] not in {u.id for u in svc.users.list_users(org.mia, include_inactive=True)}  # admins only
+    assert org.ben["id"] in {u.id for u in svc.users.list_users(org.admin, include_inactive=True)}
+    assert org.ben["id"] not in {u.id for u in svc.users.list_users(org.admin)}
+    with pytest.raises(InvalidRequestError, match="active employees"):
+        add_member(svc, org, org.ben)
+
+
+def test_employees_cannot_report_to_a_deactivated_manager(svc, org):
+    idle = svc.users.create_user(org.admin, UserCreate(
+        role="manager", first_name="Ida", last_name="Idle", email="ida@example.com", job_title="Manager")).user
+    svc.users.update_user(org.admin, idle.id, UserUpdate(is_active=False))
+    with pytest.raises(InvalidRequestError, match="active manager"):
+        svc.users.create_user(org.admin, UserCreate(
+            role="employee", first_name="Dee", last_name="New", email="dee@example.com", job_title="Engineer",
+            salary=Decimal("1"), manager_id=idle.id))
+    with pytest.raises(InvalidRequestError, match="active manager"):
+        svc.users.update_user(org.admin, org.ann["id"], UserUpdate(manager_id=idle.id))
+    with pytest.raises(InvalidRequestError, match="active manager"):
+        svc.projects.create_project(org.admin, ProjectCreate(
+            name="X", manager_id=idle.id, start_date=TODAY, projected_end_date=TODAY, allocated_hours=1))
+
+
+def test_user_search_with_no_matches_is_empty(svc, org):
+    assert svc.users.list_users(org.admin, q="zzz-no-such-user") == []
+    assert svc.users.list_users(org.ann, q="Cal") == []  # not one of Ann's contacts
+
+
 # Projects
 
 
@@ -303,6 +366,83 @@ def test_budget_estimate_uses_salaries_and_planned_hours(svc, org):
     assert svc.projects.budget_estimate(org.admin, org.project.id) == Decimal("13000.00")
     with pytest.raises(PermissionDeniedError):
         svc.projects.budget_estimate(org.mia, org.project.id)
+
+
+def test_project_dates_may_match_but_not_reverse(svc, org):
+    same_day = svc.projects.update_project(org.mia, org.project.id, ProjectUpdate(
+        start_date=TODAY, projected_end_date=TODAY))
+    assert same_day.start_date == same_day.projected_end_date == TODAY
+    # Checked against the stored dates when only one side changes
+    with pytest.raises(InvalidRequestError, match="projected_end_date"):
+        svc.projects.update_project(org.mia, org.project.id, ProjectUpdate(start_date=TODAY + timedelta(days=1)))
+    with pytest.raises(InvalidRequestError, match="projected_end_date"):
+        svc.projects.update_project(org.mia, org.project.id, ProjectUpdate(projected_end_date=TODAY - timedelta(days=1)))
+
+
+def test_setting_the_current_status_again_is_allowed(svc, org):
+    assert svc.projects.update_project(org.mia, org.project.id, ProjectUpdate(status="planning")).status == "planning"
+
+
+def test_unarchiving_an_open_project_is_refused(svc, org):
+    with pytest.raises(ConflictError, match="not archived"):
+        svc.projects.unarchive_project(org.admin, org.project.id)
+    with pytest.raises(PermissionDeniedError):
+        svc.projects.unarchive_project(org.mia, org.project.id)
+
+
+def test_archived_projects_are_read_only_even_for_admins(svc, org):
+    add_member(svc, org, org.ann)
+    svc.projects.archive_project(org.admin, org.project.id, "deleted")
+    with pytest.raises(ConflictError, match="Archived"):
+        add_member(svc, org, org.ben)
+    with pytest.raises(ConflictError, match="Archived"):
+        svc.projects.update_member_hours(org.admin, org.project.id, org.ann["id"], Decimal(10))
+    with pytest.raises(ConflictError, match="Archived"):
+        svc.projects.remove_member(org.admin, org.project.id, org.ann["id"])
+    # Its manager can't see it at all any more, and members lose it too
+    with pytest.raises(NotFoundError):
+        svc.projects.list_members(org.mia, org.project.id)
+    with pytest.raises(NotFoundError):
+        svc.projects.get_project(org.ann, org.project.id)
+    assert [m.user_id for m in svc.projects.list_members(org.admin, org.project.id)] == [org.ann["id"]]
+
+
+def test_changing_member_hours_reports_allocation_at_the_40_hour_boundary(svc, org):
+    other = svc.projects.create_project(org.admin, ProjectCreate(
+        name="Other", manager_id=org.mia["id"], start_date=TODAY, projected_end_date=TODAY, allocated_hours=1))
+    add_member(svc, org, org.ann, 30)
+    add_member(svc, org, org.ann, 5, project=other)
+    exactly_full = svc.projects.update_member_hours(org.mia, other.id, org.ann["id"].lower(), Decimal("10"))
+    assert (exactly_full.hours_per_week, exactly_full.employee_hours_per_week, exactly_full.over_limit) == (10, 40, False)
+    # Planned hours are stored to a tenth of an hour, the smallest step over the limit
+    over = svc.projects.update_member_hours(org.mia, other.id, org.ann["id"], Decimal("10.1"))
+    assert (over.employee_hours_per_week, over.over_limit) == (Decimal("40.1"), True)
+
+
+def test_member_hours_only_change_for_members_of_your_own_project(svc, org):
+    with pytest.raises(NotFoundError, match="not on this project"):
+        svc.projects.update_member_hours(org.mia, org.project.id, org.ben["id"], Decimal(10))
+    add_member(svc, org, org.ann)
+    with pytest.raises(NotFoundError):  # another manager's project is invisible to Max
+        svc.projects.update_member_hours(org.max, org.project.id, org.ann["id"], Decimal(10))
+    with pytest.raises(PermissionDeniedError):
+        svc.projects.update_member_hours(org.ann, org.project.id, org.ann["id"], Decimal(10))
+    with pytest.raises(NotFoundError, match="not on this project"):
+        svc.projects.remove_member(org.mia, org.project.id, org.ben["id"])
+
+
+def test_archived_projects_free_up_planned_hours(svc, org):
+    other = svc.projects.create_project(org.admin, ProjectCreate(
+        name="Other", manager_id=org.mia["id"], start_date=TODAY, projected_end_date=TODAY, allocated_hours=1))
+    add_member(svc, org, org.ann, 30)
+    svc.projects.archive_project(org.admin, org.project.id, "deleted")
+    member = add_member(svc, org, org.ann, 20, project=other)
+    assert (member.employee_hours_per_week, member.over_limit) == (20, False)
+
+
+def test_new_projects_have_no_members_or_estimated_cost(svc, org):
+    assert svc.projects.list_members(org.mia, org.project.id) == []
+    assert svc.projects.budget_estimate(org.admin, org.project.id) == 0
 
 
 # Milestones
@@ -431,6 +571,118 @@ def test_milestone_rules_for_managers(svc, org):
         svc.milestones.delete_milestone(org.mia, milestone.id)
 
 
+def test_unknown_milestones_and_tasks_are_not_found(svc, org):
+    with pytest.raises(NotFoundError, match="Milestone not found"):
+        svc.milestones.get_milestone(org.admin, 999999)
+    with pytest.raises(NotFoundError, match="Task not found"):
+        svc.milestones.update_task(org.admin, 999999, MilestoneTaskUpdate(is_done=True))
+    with pytest.raises(NotFoundError, match="Task not found"):
+        svc.milestones.delete_task(org.admin, 999999)
+
+
+def test_milestone_dates_may_match_but_not_reverse(svc, org):
+    milestone = add_milestone(svc, org, 1)  # runs days 1 to 20
+    one_day = svc.milestones.update_milestone(org.mia, milestone.id, MilestoneUpdate(end_date=milestone.start_date))
+    assert one_day.start_date == one_day.end_date
+    # Checked against the stored start date when only the end changes, and vice versa
+    with pytest.raises(InvalidRequestError, match="end_date"):
+        svc.milestones.update_milestone(org.mia, milestone.id, MilestoneUpdate(end_date=milestone.start_date - timedelta(days=1)))
+    with pytest.raises(InvalidRequestError, match="end_date"):
+        svc.milestones.update_milestone(org.mia, milestone.id, MilestoneUpdate(start_date=milestone.start_date + timedelta(days=1)))
+
+
+def test_duplicate_sequence_numbers_are_reported_clearly(svc, org):
+    add_milestone(svc, org, 1)
+    with pytest.raises(ConflictError, match="already has that sequence number"):
+        add_milestone(svc, org, 1, title="Also first")
+
+
+def test_managers_rename_tasks_without_ticking_them(svc, org):
+    milestone = add_milestone(svc, org, 1)
+    task = svc.milestones.create_task(org.mia, milestone.id, MilestoneTaskCreate(title="Unrack"))
+    renamed = svc.milestones.update_task(org.mia, task.id, MilestoneTaskUpdate(title="Unrack and label"))
+    assert (renamed.title, renamed.is_done, renamed.done_by) == ("Unrack and label", False, None)
+    done = svc.milestones.update_task(org.admin, task.id, MilestoneTaskUpdate(is_done=True))
+    assert done.done_by == org.admin["id"]
+    undone = svc.milestones.update_task(org.mia, task.id, MilestoneTaskUpdate(is_done=False))
+    assert (undone.is_done, undone.done_by) == (False, None)
+    with pytest.raises(NotFoundError):  # another manager's project
+        svc.milestones.update_task(org.max, task.id, MilestoneTaskUpdate(title="Mine"))
+
+
+def test_tasks_of_completed_milestones_are_kept(svc, org):
+    milestone = add_milestone(svc, org, 1)
+    task = svc.milestones.create_task(org.mia, milestone.id, MilestoneTaskCreate(title="Unrack"))
+    svc.projects.update_project(org.mia, org.project.id, ProjectUpdate(status="active"))
+    start(svc, org, milestone)
+    svc.milestones.update_task(org.mia, task.id, MilestoneTaskUpdate(is_done=True))
+    svc.milestones.update_milestone(org.mia, milestone.id, MilestoneUpdate(status="completed"))
+    with pytest.raises(ConflictError, match="completed milestone"):
+        svc.milestones.delete_task(org.mia, task.id)
+    assert [t.id for t in svc.milestones.list_tasks(org.mia, milestone.id)] == [task.id]
+
+
+def test_assignments_are_listed_and_removed_by_the_manager(svc, org):
+    add_member(svc, org, org.ann)
+    add_member(svc, org, org.ben)
+    milestone = add_milestone(svc, org, 1)
+    assert svc.milestones.list_assignments(org.mia, milestone.id) == []
+    svc.milestones.assign_employee(org.mia, milestone.id, org.ann["id"].lower())
+    svc.milestones.assign_employee(org.mia, milestone.id, org.ben["id"])
+    with pytest.raises(ConflictError, match="already assigned to this milestone"):
+        svc.milestones.assign_employee(org.mia, milestone.id, org.ann["id"])
+    assert {a.user_id for a in svc.milestones.list_assignments(org.ann, milestone.id)} == {org.ann["id"], org.ben["id"]}
+    with pytest.raises(NotFoundError):  # Cal isn't on the project
+        svc.milestones.list_assignments(org.cal, milestone.id)
+
+    with pytest.raises(PermissionDeniedError):
+        svc.milestones.unassign_employee(org.ann, milestone.id, org.ben["id"])
+    svc.milestones.unassign_employee(org.mia, milestone.id, org.ben["id"].lower())
+    assert [a.user_id for a in svc.milestones.list_assignments(org.mia, milestone.id)] == [org.ann["id"]]
+    with pytest.raises(NotFoundError, match="not assigned"):
+        svc.milestones.unassign_employee(org.mia, milestone.id, org.ben["id"])
+
+
+def test_managers_and_admins_mark_anyones_part_finished(svc, org):
+    add_member(svc, org, org.ann)
+    add_member(svc, org, org.ben)
+    milestone = add_milestone(svc, org, 1)
+    svc.milestones.assign_employee(org.mia, milestone.id, org.ann["id"])
+    finished = svc.milestones.set_finished(org.mia, milestone.id, org.ann["id"].lower(), True)
+    assert finished.finished_at is not None
+    assert svc.milestones.set_finished(org.admin, milestone.id, org.ann["id"], False).finished_at is None
+    with pytest.raises(NotFoundError, match="not assigned"):
+        svc.milestones.set_finished(org.mia, milestone.id, org.ben["id"], True)
+    with pytest.raises(NotFoundError, match="not assigned"):  # even for themselves
+        svc.milestones.set_finished(org.ben, milestone.id, org.ben["id"], True)
+    with pytest.raises(NotFoundError):  # Max can't see Mia's project at all
+        svc.milestones.set_finished(org.max, milestone.id, org.ann["id"], True)
+
+
+def test_archived_projects_hide_their_milestones_from_managers_and_employees(svc, org):
+    add_member(svc, org, org.ann)
+    milestone = add_milestone(svc, org, 1)
+    task = svc.milestones.create_task(org.mia, milestone.id, MilestoneTaskCreate(title="Unrack"))
+    svc.milestones.assign_employee(org.mia, milestone.id, org.ann["id"])
+    svc.projects.archive_project(org.admin, org.project.id, "deleted")
+    for actor in (org.mia, org.ann):
+        with pytest.raises(NotFoundError):
+            svc.milestones.get_milestone(actor, milestone.id)
+        with pytest.raises(NotFoundError):
+            svc.milestones.update_task(actor, task.id, MilestoneTaskUpdate(is_done=True))
+    with pytest.raises(ConflictError, match="Archived"):  # admins see it but can't change it
+        svc.milestones.create_task(org.admin, milestone.id, MilestoneTaskCreate(title="More"))
+    assert svc.milestones.list_milestones(org.admin, org.project.id)[0].id == milestone.id
+
+
+def test_calendar_ranges_are_inclusive_and_may_be_one_day(svc, org):
+    first = add_milestone(svc, org, 1)  # days 1 to 20
+    assert [m.id for m in svc.milestones.list_visible_milestones(org.mia, start=first.end_date, end=first.end_date)] \
+        == [first.id]
+    day_after = first.end_date + timedelta(days=1)
+    assert svc.milestones.list_visible_milestones(org.mia, start=day_after, end=day_after) == []
+
+
 # Time entries
 
 
@@ -471,6 +723,105 @@ def test_time_entries_are_scoped_by_role(svc, org):
     assert svc.time.update_time_entry(org.ann, ann_entry.id, TimeEntryUpdate(hours=Decimal("7"))).hours == 7
 
 
+def test_a_week_of_exactly_40_hours_is_not_over_the_limit(svc, org):
+    add_member(svc, org, org.ann)
+    monday = TODAY - timedelta(days=TODAY.weekday())
+    for day in range(5):
+        entry = svc.time.log_time(org.ann, TimeEntryCreate(
+            project_id=org.project.id, work_date=monday + timedelta(days=day), hours=Decimal("8")))
+    assert (entry.week_hours, entry.over_limit) == (40, False)
+    # A quarter of an hour more crosses it
+    entry = svc.time.log_time(org.ann, TimeEntryCreate(
+        project_id=org.project.id, work_date=monday + timedelta(days=5), hours=Decimal("0.25")))
+    assert (entry.week_hours, entry.over_limit) == (Decimal("40.25"), True)
+    # Weeks run Monday to Sunday: the next Monday starts a new total
+    entry = svc.time.log_time(org.ann, TimeEntryCreate(
+        project_id=org.project.id, work_date=monday + timedelta(days=7), hours=Decimal("8")))
+    assert (entry.week_hours, entry.over_limit) == (8, False)
+
+
+def test_editing_an_entry_recomputes_the_weekly_total(svc, org):
+    add_member(svc, org, org.ann)
+    monday = TODAY - timedelta(days=TODAY.weekday())
+    entries = [svc.time.log_time(org.ann, TimeEntryCreate(
+        project_id=org.project.id, work_date=monday + timedelta(days=day), hours=Decimal("10"))) for day in range(4)]
+    over = svc.time.update_time_entry(org.ann, entries[0].id, TimeEntryUpdate(hours=Decimal("10.25")))
+    assert (over.week_hours, over.over_limit) == (Decimal("40.25"), True)
+    back = svc.time.update_time_entry(org.ann, entries[0].id, TimeEntryUpdate(hours=Decimal("10")))
+    assert (back.week_hours, back.over_limit) == (40, False)
+
+
+def test_hours_cannot_be_logged_against_another_projects_milestone(svc, org):
+    other = svc.projects.create_project(org.admin, ProjectCreate(
+        name="Other", manager_id=org.max["id"], start_date=TODAY, projected_end_date=TODAY + timedelta(days=30),
+        allocated_hours=10))
+    theirs = svc.milestones.create_milestone(org.max, other.id, MilestoneCreate(
+        sequence=1, title="Theirs", start_date=TODAY, end_date=TODAY))
+    add_member(svc, org, org.ann)
+    with pytest.raises(ConflictError, match="referenced record does not exist"):
+        svc.time.log_time(org.ann, TimeEntryCreate(
+            project_id=org.project.id, milestone_id=theirs.id, work_date=TODAY, hours=Decimal("1")))
+
+
+def test_employees_delete_their_own_entries_only(svc, org):
+    add_member(svc, org, org.ann)
+    add_member(svc, org, org.ben)
+    entry = svc.time.log_time(org.ann, TimeEntryCreate(project_id=org.project.id, work_date=TODAY, hours=Decimal("8")))
+    for someone_else in (org.ben, org.mia):  # not even the project's manager
+        with pytest.raises(NotFoundError):
+            svc.time.delete_time_entry(someone_else, entry.id)
+    svc.time.delete_time_entry(org.ann, entry.id)
+    assert svc.time.list_time_entries(org.ann) == []
+    with pytest.raises(NotFoundError):
+        svc.time.delete_time_entry(org.ann, entry.id)
+
+
+def test_entries_on_archived_projects_are_frozen_except_for_admins(svc, org):
+    add_member(svc, org, org.ann)
+    entry = svc.time.log_time(org.ann, TimeEntryCreate(project_id=org.project.id, work_date=TODAY, hours=Decimal("8")))
+    other = svc.time.log_time(org.ann, TimeEntryCreate(project_id=org.project.id, work_date=TODAY, hours=Decimal("1")))
+    svc.projects.archive_project(org.admin, org.project.id, "deleted")
+    with pytest.raises(ConflictError, match="archived project"):
+        svc.time.update_time_entry(org.ann, entry.id, TimeEntryUpdate(hours=Decimal("7")))
+    with pytest.raises(ConflictError, match="archived project"):
+        svc.time.delete_time_entry(org.ann, entry.id)
+    # Admins can still correct them
+    assert svc.time.update_time_entry(org.admin, entry.id, TimeEntryUpdate(hours=Decimal("7"))).hours == 7
+    svc.time.delete_time_entry(org.admin, other.id)
+    assert [e.id for e in svc.time.list_time_entries(org.admin, user_id=org.ann["id"].lower())] == [entry.id]
+
+
+def test_managers_filter_hours_by_their_own_projects_only(svc, org):
+    other = svc.projects.create_project(org.admin, ProjectCreate(
+        name="Other", manager_id=org.max["id"], start_date=TODAY, projected_end_date=TODAY, allocated_hours=1))
+    add_member(svc, org, org.ann)
+    add_member(svc, org, org.cal, project=other)
+    svc.time.log_time(org.ann, TimeEntryCreate(project_id=org.project.id, work_date=TODAY, hours=Decimal("8")))
+    svc.time.log_time(org.cal, TimeEntryCreate(project_id=other.id, work_date=TODAY, hours=Decimal("5")))
+    assert [e.user_id for e in svc.time.list_time_entries(org.mia, project_id=org.project.id)] == [org.ann["id"]]
+    with pytest.raises(NotFoundError):
+        svc.time.list_time_entries(org.mia, project_id=other.id)
+    # Asking for someone else's hours on another manager's project still only shows her own projects
+    assert svc.time.list_time_entries(org.mia, user_id=org.cal["id"]) == []
+    assert {e.user_id for e in svc.time.list_time_entries(org.admin)} == {org.ann["id"], org.cal["id"]}
+
+
+def test_employees_cannot_read_other_employees_hours(svc, org):
+    add_member(svc, org, org.ann)
+    add_member(svc, org, org.ben)
+    svc.time.log_time(org.ben, TimeEntryCreate(project_id=org.project.id, work_date=TODAY, hours=Decimal("6")))
+    assert svc.time.list_time_entries(org.ann, user_id=org.ben["id"]) == []
+
+
+def test_time_entry_date_ranges_are_inclusive(svc, org):
+    add_member(svc, org, org.ann)
+    yesterday, today = TODAY - timedelta(days=1), TODAY
+    svc.time.log_time(org.ann, TimeEntryCreate(project_id=org.project.id, work_date=yesterday, hours=Decimal("2")))
+    svc.time.log_time(org.ann, TimeEntryCreate(project_id=org.project.id, work_date=today, hours=Decimal("3")))
+    assert [e.work_date for e in svc.time.list_time_entries(org.ann, start=today, end=today)] == [today]
+    assert [e.work_date for e in svc.time.list_time_entries(org.ann, start=yesterday, end=today)] == [today, yesterday]
+
+
 # Message board
 
 
@@ -494,6 +845,15 @@ def test_message_board_permissions(svc, org):
     svc.messages.delete(org.mia, kickoff.id)
 
 
+def test_archived_project_boards_are_read_only(svc, org):
+    svc.messages.post(org.mia, MessageCreate(project_id=org.project.id, body="Wrapping up"))
+    svc.projects.archive_project(org.admin, org.project.id, "deleted")
+    with pytest.raises(ConflictError, match="Archived projects"):
+        svc.messages.post(org.admin, MessageCreate(project_id=org.project.id, body="Too late"))
+    # The history stays readable for admins
+    assert [m.body for m in svc.messages.board(org.admin, project_id=org.project.id)] == ["Wrapping up"]
+
+
 def test_a_reassigned_projects_board_keeps_the_previous_managers_posts(svc, org):
     other = svc.projects.create_project(org.admin, ProjectCreate(
         name="Max's own", manager_id=org.max["id"], start_date=TODAY, projected_end_date=TODAY, allocated_hours=1))
@@ -509,6 +869,34 @@ def test_a_reassigned_projects_board_keeps_the_previous_managers_posts(svc, org)
         svc.messages.delete(org.max, post.id)
     # Mia no longer manages the project, so its board is gone from hers
     assert "From Mia to her team" not in {m.body for m in svc.messages.board(org.mia)}
+
+
+def test_deleting_messages_that_dont_exist_or_cant_be_seen(svc, org):
+    other = svc.projects.create_project(org.admin, ProjectCreate(
+        name="Other", manager_id=org.max["id"], start_date=TODAY, projected_end_date=TODAY, allocated_hours=1))
+    with pytest.raises(NotFoundError, match="Message not found"):
+        svc.messages.delete(org.admin, 999999)
+    theirs = svc.messages.post(org.max, MessageCreate(project_id=other.id, body="Max's board"))
+    # Mia can't see Max's project, so the post doesn't exist for her
+    with pytest.raises(NotFoundError, match="Message not found"):
+        svc.messages.delete(org.mia, theirs.id)
+    svc.messages.delete(org.admin, theirs.id)  # admins delete any post
+
+
+def test_only_admins_delete_announcements(svc, org):
+    announcement = svc.messages.post(org.admin, MessageCreate(body="Office closed Friday"))
+    for actor in (org.mia, org.ann):
+        with pytest.raises(PermissionDeniedError):
+            svc.messages.delete(actor, announcement.id)
+    svc.messages.delete(org.admin, announcement.id)
+    assert svc.messages.board(org.ann) == []
+
+
+def test_boards_are_empty_for_users_without_projects(svc, org):
+    assert svc.messages.board(org.cal) == []
+    assert svc.messages.board(org.max) == []
+    with pytest.raises(NotFoundError):
+        svc.messages.board(org.cal, project_id=org.project.id)
 
 
 # Audit log
@@ -627,3 +1015,38 @@ def test_home_pages(svc, org):
     assert (mine.project_ids, mine.hours_this_week, mine.over_limit_this_week) == ([org.project.id], 8, False)
     with pytest.raises(PermissionDeniedError):
         svc.reports.employee_home(org.mia)
+
+
+def test_projects_without_a_budget_have_no_budget_risk():
+    risk, _, budget_pct = assess_risk(status_row(budget=Decimal(0), labor_cost=Decimal(5000)), TODAY)
+    assert (risk.level, budget_pct) == ("on_track", None)
+
+
+def test_risk_boundaries_are_exclusive():
+    # Spending exactly the budget, or exactly the tolerance ahead of progress, is not flagged
+    risk, _, budget_pct = assess_risk(status_row(labor_cost=Decimal(10000), completion_pct=Decimal(80)), TODAY)
+    assert (risk.level, budget_pct) == ("on_track", Decimal("100.0"))
+    risk, _, _ = assess_risk(status_row(logged_hours=Decimal(1000)), TODAY)  # exactly the allocation
+    assert risk.level == "on_track"
+    # The projected end date itself is still on time
+    risk, _, _ = assess_risk(status_row(projected_end_date=TODAY, completion_pct=Decimal(100)), TODAY)
+    assert risk.level == "on_track"
+
+
+def test_projects_not_yet_started_need_no_milestones():
+    risk, timeline_pct, _ = assess_risk(status_row(
+        start_date=TODAY + timedelta(days=1), milestones_total=0, completion_pct=Decimal(0), labor_cost=Decimal(0)), TODAY)
+    assert (risk.level, timeline_pct) == ("on_track", Decimal("0.0"))
+
+
+def test_one_overdue_milestone_is_reported_in_the_singular():
+    risk, _, _ = assess_risk(status_row(milestones_overdue=1), TODAY)
+    assert risk.reasons == ["1 milestone past its end date"]
+
+
+def test_reports_are_empty_for_a_manager_without_projects(svc, org):
+    assert svc.reports.projects_at_risk(org.max) == []
+    assert svc.reports.budget(org.max) == []
+    assert svc.reports.over_allocated(org.mia) == []
+    home = svc.reports.manager_home(org.max)
+    assert (home.active_projects, home.projects) == (0, [])

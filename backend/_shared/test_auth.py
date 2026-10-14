@@ -240,3 +240,8 @@ def test_initial_admin_is_skipped_without_a_password(db, monkeypatch):
     users = UserRepository(db)
     ensure_initial_admin(users)
     assert users.find(role="admin") == []
+
+
+@pytest.mark.parametrize("stored", ["bcrypt$16384$8$1$c2FsdA==$aGFzaA==", "scrypt$x$8$1$c2FsdA==$aGFzaA==", ""])
+def test_unknown_or_malformed_hashes_never_verify(stored):
+    assert verify_password(PASSWORD, stored) is False

@@ -105,6 +105,15 @@ def test_teams_are_private_to_their_manager_and_admins(svc, org):
     assert svc.teams.update_team(org.admin, org.team.id, TeamUpdate(name="Renamed")).name == "Renamed"
 
 
+def test_team_search_matches_names_within_the_managers_own_teams(svc, org):
+    svc.teams.create_team(org.max, TeamCreate(name="Data hall B"))
+    assert [t.name for t in svc.teams.list_teams(org.mia, q="data")] == ["Data center crew"]
+    assert {t.name for t in svc.teams.list_teams(org.admin, q="DATA")} == {"Data center crew", "Data hall B"}
+    assert svc.teams.list_teams(org.mia, q="hall") == []  # Max's team never shows up for Mia
+    with pytest.raises(PermissionDeniedError):
+        svc.teams.list_teams(org.ann)
+
+
 # Members
 
 
@@ -209,6 +218,7 @@ def test_team_routes_end_to_end(db, svc, org):
         assert client.post(f"/teams/{team_id}/members", headers=headers,
                            json={"user_id": org.cal["id"]}).status_code == 400
         assert [m["user_id"] for m in client.get(f"/teams/{team_id}/members", headers=headers).json()] == [org.ann["id"]]
+        assert [t["name"] for t in client.get("/teams", headers=headers, params={"q": "RACK"}).json()] == ["Racking"]
 
         staffed = client.post(f"/projects/{org.project.id}/teams", headers=headers,
                               json={"team_id": team_id, "hours_per_week": 25})

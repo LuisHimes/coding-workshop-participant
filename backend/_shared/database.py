@@ -12,13 +12,17 @@ Schema changes:
   each applied once, in filename order, and recorded in schema_migrations.
   Pending migrations run before the models' SCHEMA, so views and functions
   are recreated against the migrated tables.
+- A fingerprint of the schema SQL and migrations is stored in schema_state.
+  Cold starts compare it with one query and skip the setup when nothing has
+  changed, so only the first cold start after a schema change pays for it.
 """
 
+import hashlib
 import logging
 from collections.abc import Iterator
 from pathlib import Path
 
-from psycopg import Connection, connect
+from psycopg import Connection, connect, errors
 from psycopg.rows import dict_row, tuple_row
 
 from config import settings
@@ -55,6 +59,13 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     version    TEXT PRIMARY KEY,
     applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- One row: the fingerprint of the schema setup that was last applied
+CREATE TABLE IF NOT EXISTS schema_state (
+    id          BOOLEAN PRIMARY KEY DEFAULT true CHECK (id),
+    fingerprint TEXT NOT NULL,
+    applied_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 """
 
 
@@ -63,13 +74,56 @@ def migration_files() -> list[Path]:
     return sorted(MIGRATIONS_DIR.glob("*.sql"))
 
 
-def create_schema(conn: Connection) -> None:
+def schema_fingerprint(schema: list[str] = SCHEMA, migrations: list[Path] | None = None) -> str:
+    """A hash of everything the schema setup runs; any change to it gives a new fingerprint."""
+    digest = hashlib.sha256(MIGRATIONS_TABLE.encode())
+    for path in migration_files() if migrations is None else migrations:
+        digest.update(f"\0{path.name}\0".encode() + path.read_bytes())
+    for sql in schema:
+        digest.update(b"\0" + sql.encode())
+    return digest.hexdigest()
+
+
+SCHEMA_FINGERPRINT = schema_fingerprint()
+
+
+def stored_fingerprint(conn: Connection) -> str | None:
+    """The fingerprint of the last applied schema setup, or None if there is none yet."""
+    try:
+        row = conn.execute("SELECT fingerprint FROM schema_state").fetchone()
+    except errors.UndefinedTable:
+        return None
+    return row["fingerprint"] if row else None
+
+
+def ensure_schema(conn: Connection) -> bool:
+    """
+    Brings the schema up to date unless it already matches this code, which
+    costs one query. Returns whether the setup ran. Needs an autocommit
+    connection, so a missing schema_state table can't abort a transaction.
+    """
+    if stored_fingerprint(conn) == SCHEMA_FINGERPRINT:
+        return False
+    return create_schema(conn, only_if_changed=True)
+
+
+def create_schema(conn: Connection, only_if_changed: bool = False) -> bool:
     """
     Creates or updates all tables, triggers and views, applying any pending
-    migrations, in one all-or-nothing transaction.
+    migrations, in one all-or-nothing transaction, and records the
+    fingerprint. With only_if_changed, it first rechecks the fingerprint under
+    the lock, so concurrent cold starts after a deploy run the setup once.
+    Returns whether the setup ran.
     """
     with conn.transaction(), conn.cursor(row_factory=tuple_row) as cur:
         cur.execute("SELECT pg_advisory_xact_lock(%s)", (SCHEMA_LOCK_ID,))
+        if only_if_changed:
+            cur.execute("SELECT to_regclass('schema_state') IS NOT NULL")
+            if cur.fetchone()[0]:
+                cur.execute("SELECT fingerprint FROM schema_state")
+                row = cur.fetchone()
+                if row and row[0] == SCHEMA_FINGERPRINT:
+                    return False
         cur.execute("SELECT to_regclass('users') IS NULL")
         fresh = cur.fetchone()[0]
         cur.execute(MIGRATIONS_TABLE)
@@ -87,13 +141,21 @@ def create_schema(conn: Connection) -> None:
         for sql in SCHEMA:
             cur.execute(sql)
 
+        cur.execute(
+            "INSERT INTO schema_state (fingerprint) VALUES (%s) "
+            "ON CONFLICT (id) DO UPDATE SET fingerprint = EXCLUDED.fingerprint, applied_at = now()",
+            (SCHEMA_FINGERPRINT,),
+        )
+    logger.info("Schema setup applied")
+    return True
+
 
 def get_connection() -> Connection:
-    """Returns the pooled connection, creating it (and the schema) if needed."""
+    """Returns the pooled connection, creating it (and updating the schema) if needed."""
     global PG_CONN
     if PG_CONN is None or PG_CONN.closed:
         PG_CONN = connect(settings.pg_config, autocommit=True, row_factory=dict_row)
-        create_schema(PG_CONN)
+        ensure_schema(PG_CONN)
         # Under the same lock, so concurrent cold starts create the first admin only once
         with PG_CONN.transaction():
             PG_CONN.execute("SELECT pg_advisory_xact_lock(%s)", (SCHEMA_LOCK_ID,))

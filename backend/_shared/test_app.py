@@ -130,3 +130,21 @@ def test_feature_lambdas_load_only_their_own_controller():
     loaded = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
                             cwd=Path(__file__).parent, check=True).stdout.strip()
     assert loaded == "controller.health,controller.projects"
+
+
+def test_running_app_py_starts_the_whole_api_locally(monkeypatch):
+    # Run app.py's real code as __main__ with uvicorn.run replaced, so no server starts
+    import logging
+
+    import uvicorn
+
+    from config import settings
+
+    calls = []
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: calls.append((args, kwargs)))
+    root = logging.getLogger()
+    monkeypatch.setattr(root, "level", root.level)  # restored after the test
+    source = Path(__file__).parent / "app.py"
+    exec(compile(source.read_text(), str(source), "exec"), {"__name__": "__main__"})
+    assert calls == [(("app:app",), {"host": "0.0.0.0", "port": 8000, "reload": True})]
+    assert root.level == logging.getLevelName(settings.log_level)

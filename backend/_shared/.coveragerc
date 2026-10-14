@@ -1,0 +1,13 @@
+# Coverage settings: python -m pytest --cov
+[run]
+branch = True
+source = .
+omit =
+    test_*.py
+    conftest.py
+
+[report]
+# Fail the run if coverage drops below 100%
+fail_under = 100
+show_missing = True
+skip_covered = True

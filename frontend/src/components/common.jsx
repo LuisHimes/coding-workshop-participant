@@ -65,6 +65,13 @@ export function EmptyState({ title, children }) {
 export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', destructive, onConfirm, onClose, children }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [wasOpen, setWasOpen] = useState(open)
+
+  // Clear a previous attempt's error each time the dialog opens
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setError(null)
+  }
 
   const confirm = async () => {
     setBusy(true)

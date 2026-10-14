@@ -17,7 +17,10 @@ from psycopg import errors as pg_errors
 
 from app import app
 from database import get_db
-from middleware import ExceptionHandlerMiddleware, RequestLoggingMiddleware, SECURITY_HEADERS, add_middleware
+from middleware import (
+    SECURITY_HEADERS, ExceptionHandlerMiddleware, FeaturePathMiddleware, RequestLoggingMiddleware, SecurityHeadersMiddleware,
+    add_middleware,
+)
 from repository.users import UserRepository
 from service.errors import ConflictError, InvalidRequestError, NotFoundError, PermissionDeniedError
 from service.security import hash_password
@@ -176,3 +179,31 @@ def test_security_headers_are_on_every_response(path, error):
 def test_routes_can_set_their_own_cache_policy():
     response = make_client().get("/cacheable")
     assert response.headers.get_list("cache-control") == ["max-age=60"]
+
+
+# Non-HTTP events
+
+
+def test_lifespan_events_pass_through_every_middleware():
+    # Starting the app sends a lifespan scope through the whole stack; none of it may treat it as a request
+    events = []
+    test_app = FastAPI(on_startup=[lambda: events.append("startup")], on_shutdown=[lambda: events.append("shutdown")])
+    add_middleware(test_app, "projects")
+    with TestClient(test_app):
+        assert events == ["startup"]
+    assert events == ["startup", "shutdown"]
+
+
+@pytest.mark.parametrize("middleware", [
+    RequestLoggingMiddleware, SecurityHeadersMiddleware, ExceptionHandlerMiddleware,
+    lambda inner: FeaturePathMiddleware(inner, "projects"),
+])
+def test_non_http_scopes_reach_the_app_unchanged(middleware):
+    received = []
+
+    async def inner(scope, receive, send):
+        received.append(scope)
+
+    scope = {"type": "websocket", "path": "/socket"}
+    asyncio.run(middleware(inner)(scope, None, None))
+    assert received == [{"type": "websocket", "path": "/socket"}]  # no path rewrite, no request state

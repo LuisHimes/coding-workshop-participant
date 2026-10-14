@@ -17,10 +17,11 @@ export function DirectoryProvider({ children }) {
   const [projects, setProjects] = useState([])
 
   const refresh = useCallback(
+    // A failed refresh keeps the names already loaded; screens show their own errors
     () => loadDirectory().then(([userList, projectList]) => {
       setUsers(userList)
       setProjects(projectList)
-    }),
+    }, () => {}),
     [],
   )
 

@@ -212,10 +212,10 @@ export default function ProjectDetailPage() {
       {tab === 'milestones' && <MilestonesPanel project={project} readOnly={readOnly} />}
       {tab === 'deliverables' && <Card><CardContent><DeliverablesPanel project={project} /></CardContent></Card>}
       {tab === 'hours' && <Card><HoursPanel project={project} editable={isAdmin || isEmployee} canLog={isEmployee && !readOnly} /></Card>}
-      {tab === 'board' && <Card><CardContent><MessageBoard projectId={project.id} /></CardContent></Card>}
+      {tab === 'board' && <Card><CardContent><MessageBoard projectId={project.id} readOnly={readOnly} /></CardContent></Card>}
 
       <ProjectFormDialog open={editing} project={project} onClose={() => setEditing(false)}
-        onSaved={(saved) => { changed(); if (saved.archived) notify('Project completed and archived') }} />
+        onSaved={(saved) => { reload(); if (saved.archived) notify('Project completed and archived') }} />
 
       <ConfirmDialog
         open={archiving}

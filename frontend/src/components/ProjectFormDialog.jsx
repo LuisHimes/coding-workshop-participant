@@ -7,7 +7,8 @@ import { UserPicker } from './common'
 import { useDirectory } from './Directory'
 import { PROJECT_STATUS_LABELS, todayIso } from '../utils/format'
 
-const EMPTY = { name: '', description: '', manager_id: null, start_date: todayIso(), projected_end_date: '', allocated_hours: '', budget: '' }
+// start_date is filled in with today each time the dialog opens
+const EMPTY = { name: '', description: '', manager_id: null, start_date: '', projected_end_date: '', allocated_hours: '', budget: '' }
 
 /**
  * Create a project, or edit one when `project` is given. Admins can change
@@ -29,7 +30,7 @@ export default function ProjectFormDialog({ open, project, onClose, onSaved }) {
         name: project.name, description: project.description ?? '', manager_id: project.manager_id,
         start_date: project.start_date, projected_end_date: project.projected_end_date,
         allocated_hours: String(project.allocated_hours), budget: String(project.budget), status: project.status,
-      } : EMPTY)
+      } : { ...EMPTY, start_date: todayIso() })
     }
   }
 

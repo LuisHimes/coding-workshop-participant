@@ -11,6 +11,7 @@ from decimal import Decimal
 import pytest
 
 from repository.audit import AuditRepository
+from repository.base import Repository
 from repository.dashboard import DashboardRepository
 from repository.messages import MessageRepository
 from repository.milestones import MilestoneRepository
@@ -227,3 +228,12 @@ def test_dashboard_reports(org, repos):
     projects.archive(project_id, "deleted", org["admin"]["id"])
     assert dashboard.project_status() == []
     assert len(dashboard.project_status(include_archived=True)) == 1
+
+
+def test_repositories_return_every_column_by_default(org, db):
+    # A repository that doesn't list its columns returns whole rows
+    class RawUsers(Repository):
+        table = "users"
+
+    row = RawUsers(db)._get(org["employee"]["id"])
+    assert row["password_hash"] == "hash" and row["first_name"] == "Grace"

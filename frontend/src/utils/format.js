@@ -2,13 +2,15 @@
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
+// Two decimals so quarter hours show exactly (40.25 h, not 40.3 h)
+const hourNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
 
 export function money(value) {
   return value === null || value === undefined ? '—' : currency.format(Number(value))
 }
 
 export function hours(value) {
-  return value === null || value === undefined ? '—' : `${number.format(Number(value))} h`
+  return value === null || value === undefined ? '—' : `${hourNumber.format(Number(value))} h`
 }
 
 export function percent(value) {

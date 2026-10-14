@@ -112,7 +112,7 @@ class TeamProjectAssignment(BaseModel):
     """Adds every active member of a team to a project with the same weekly hours."""
 
     team_id: int
-    hours_per_week: Decimal = Field(default=Decimal(HOURS_PER_WEEK), gt=0, le=HOURS_PER_WEEK)
+    hours_per_week: Decimal = Field(default=Decimal(HOURS_PER_WEEK), gt=0, le=HOURS_PER_WEEK, decimal_places=1)
 
 
 class SkippedMember(BaseModel):

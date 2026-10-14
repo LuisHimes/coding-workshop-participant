@@ -162,7 +162,7 @@ class Project(ProjectSummary):
 
 class ProjectMemberCreate(BaseModel):
     user_id: str = Field(pattern=r"^[A-Za-z0-9]{6}$")
-    hours_per_week: Decimal = Field(default=Decimal(HOURS_PER_WEEK), gt=0, le=HOURS_PER_WEEK)
+    hours_per_week: Decimal = Field(default=Decimal(HOURS_PER_WEEK), gt=0, le=HOURS_PER_WEEK, decimal_places=1)
 
 
 class ProjectMember(BaseModel):
@@ -195,4 +195,4 @@ class BudgetEstimate(BaseModel):
 
 
 class ProjectMemberUpdate(BaseModel):
-    hours_per_week: Decimal = Field(gt=0, le=HOURS_PER_WEEK)
+    hours_per_week: Decimal = Field(gt=0, le=HOURS_PER_WEEK, decimal_places=1)

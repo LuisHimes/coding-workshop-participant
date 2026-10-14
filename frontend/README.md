@@ -79,7 +79,8 @@ frontend/
     ├── pages/                # One component per screen
     ├── utils/format.js       # Money, hours, dates, labels
     ├── utils/milestones.js   # Milestone states (incl. overdue) and calendar-day helpers
-    ├── test/                 # Fake API and test setup
+    ├── test/                 # Fake API, test setup, and tests by area: projects, people (users, teams,
+    │                         #   audit, auth, API client), work (hours, messages, reports)
     └── App.test.jsx          # Renders every screen against the fake API
 ```
 
@@ -102,6 +103,7 @@ To run only this app against an already running backend: `npm run dev`.
 ```sh
 npm run lint
 npm test          # Vitest: every screen renders against a fake API, plus login and key flows
+npm run test:coverage  # The same, failing unless every file is 100% covered (lines, branches, functions)
 npm run build
 ```
 

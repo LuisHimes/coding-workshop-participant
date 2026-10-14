@@ -85,6 +85,7 @@ export default function EmployeeHomePage() {
   const [logging, setLogging] = useState(false)
   const h = home.data
   const weekHours = Number(h?.hours_this_week ?? 0)
+  const overLimit = weekHours > FULL_WEEK
   const myProjects = directory.projects.filter((p) => !p.archived)
 
   return (
@@ -131,16 +132,16 @@ export default function EmployeeHomePage() {
             </Card>
           </Stack>
           <Stack spacing={3}>
-            <Card sx={{ borderLeft: 4, borderLeftColor: h.over_limit_this_week ? 'warning.main' : 'primary.main' }}>
+            <Card sx={{ borderLeft: 4, borderLeftColor: overLimit ? 'warning.main' : 'primary.main' }}>
               <CardContent>
                 <Typography variant="subtitle1">This week</Typography>
                 <Typography variant="h4" sx={{ fontVariantNumeric: 'tabular-nums', mt: 1 }}>
                   {hours(weekHours)} <Typography component="span" color="text.secondary">of {FULL_WEEK} h</Typography>
                 </Typography>
                 <LinearProgress variant="determinate" value={Math.min((weekHours / FULL_WEEK) * 100, 100)}
-                  color={h.over_limit_this_week ? 'warning' : 'primary'} sx={{ height: 8, borderRadius: 4, my: 1.5 }} />
-                <Typography variant="body2" color={h.over_limit_this_week ? 'warning.main' : 'text.secondary'}>
-                  {h.over_limit_this_week
+                  color={overLimit ? 'warning' : 'primary'} sx={{ height: 8, borderRadius: 4, my: 1.5 }} />
+                <Typography variant="body2" color={overLimit ? 'warning.main' : 'text.secondary'}>
+                  {overLimit
                     ? `You're over a 40-hour week by ${hours(weekHours - FULL_WEEK)}.`
                     : `${hours(FULL_WEEK - weekHours)} left in a 40-hour week.`}
                 </Typography>

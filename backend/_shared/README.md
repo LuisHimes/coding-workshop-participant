@@ -107,7 +107,7 @@ _shared/
 ├── test_controllers.py  # End-to-end API tests through HTTP
 ├── conftest.py          # Test fixture: a temporary schema per test
 ├── requirements.txt     # Lambda dependencies (installed by Terraform)
-└── requirements-dev.txt # Local tooling: uvicorn, pytest, httpx2
+└── requirements-dev.txt # Local tooling: uvicorn, pytest, pytest-cov, httpx2
 ```
 
 ## Endpoints
@@ -345,6 +345,7 @@ The schema is set up automatically on the first database connection, in one all-
 
 - **The models are the latest schema.** Each model's `SCHEMA` SQL describes the tables as they should be now. A fresh database is built from it directly, and every migration is recorded as already applied.
 - **Migrations update existing databases.** The SQL files in [migrations/](migrations/) run once each, in filename order, and are recorded in the `schema_migrations` table. Pending migrations run before the models' `SCHEMA`, so views and functions are recreated against the migrated tables.
+- **Unchanged schemas are skipped.** A fingerprint (SHA-256) of the schema SQL and migration files is stored in `schema_state`. Each cold start compares it with one query and runs the setup only when it differs, so only the first cold start after a schema change pays for it.
 
 | Migration                              | What it does                                                                 |
 | -------------------------------------- | ---------------------------------------------------------------------------- |
@@ -391,6 +392,9 @@ python3.13 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 
 # Tests (model tests are skipped if PostgreSQL is not reachable)
 .venv/bin/pytest
+
+# Tests with line and branch coverage; fails below 100% (.coveragerc)
+.venv/bin/pytest --cov
 
 # Deploy to AWS
 ./bin/deploy-backend.sh
