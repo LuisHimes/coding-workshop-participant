@@ -109,7 +109,7 @@ function BudgetReport() {
                   <TableCell align="right" sx={{ color: b.over_budget ? 'error.main' : undefined }}>{money(b.budget_remaining)}</TableCell>
                   <TableCell align="right">{percent(b.budget_used_pct)}</TableCell>
                   <TableCell align="right">{percent(b.completion_pct)}</TableCell>
-                  <TableCell align="right">{hours(b.logged_hours)} / {hours(b.allocated_hours)}</TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{hours(b.logged_hours)} / {hours(b.allocated_hours)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

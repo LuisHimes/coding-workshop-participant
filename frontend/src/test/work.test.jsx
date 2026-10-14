@@ -199,19 +199,29 @@ describe('message board', () => {
     expect(await screen.findByText('Announcements to everyone, plus the boards of your projects.')).toBeTruthy()
   })
 
-  it('shows older posts on request, 20 at a time', async () => {
+  it('scrolls posts inside the card and shows older ones on request, 20 at a time', async () => {
     const page = (count, from = 1) => Array.from({ length: count }, (_, i) => ({
       id: from + i, project_id: null, author_id: 'ADMIN1', author_name: 'Ada Admin', body: `Post ${from + i}`, created_at: '2026-10-01T09:00:00Z',
     }))
     respond('GET /api/messages', page(20))
     renderAt('/')
     expect(await screen.findByText('Post 20')).toBeTruthy()
+    // The posts sit in a keyboard-focusable scrolling area, with the button at its end
+    const posts = screen.getByRole('region', { name: 'Posts' })
+    expect(posts.getAttribute('tabindex')).toBe('0')
+    expect(within(posts).getByText('Post 1')).toBeTruthy()
     respond('GET /api/messages', page(25))
-    fireEvent.click(screen.getByRole('button', { name: 'Show older posts' }))
+    fireEvent.click(within(posts).getByRole('button', { name: 'Show older posts' }))
     expect(await screen.findByText('Post 25')).toBeTruthy()
     expect(lastCall('GET /api/messages').query).toEqual({ limit: '40' })
     // Fewer posts than asked for means there are no older ones
     expect(screen.queryByRole('button', { name: 'Show older posts' })).toBeNull()
+  })
+
+  it('a project\'s own board tab lists posts at full length, without a scrolling area', async () => {
+    renderAt('/projects/1?tab=board')
+    expect(await screen.findByText('Welcome to Project Tracker')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Posts' })).toBeNull()
   })
 
   it('a project\'s board posts to that project and omits the project name', async () => {
@@ -256,6 +266,13 @@ describe('message board', () => {
 })
 
 describe('hours', () => {
+  it('employees see their own hours without an Employee column', async () => {
+    asEmployee('/time-entries')
+    expect(await screen.findByText('Unracked row 4')).toBeTruthy()
+    expect(screen.queryByRole('columnheader', { name: 'Employee' })).toBeNull()
+    expect(screen.getByText('Total').getAttribute('colspan')).toBe('3')
+  })
+
   it('admins filter hours by employee, project and dates', async () => {
     renderAt('/time-entries')
     expect(await screen.findByText('Unracked row 4')).toBeTruthy()
@@ -479,6 +496,41 @@ describe('logging hours', () => {
 })
 
 describe('employee home', () => {
+  it('lists upcoming deadlines soonest first, leaving out completed and past ones, at most five', async () => {
+    onDay('2026-11-20')
+    const ms = (id, title, end, status = 'not_started') => ({ id, project_id: 1, sequence: id, title, start_date: '2026-11-01', end_date: end, status })
+    respond('GET /api/milestones', [
+      ms(1, 'Finished early', '2026-11-25', 'completed'), ms(2, 'Ended last week', '2026-11-13'),
+      ms(3, 'Unrack row 9', '2026-12-02', 'in_progress'), ms(4, 'Rack row 1', '2026-11-22'), ms(5, 'Wipe disks', '2026-12-10'),
+      ms(6, 'Recycle', '2026-12-12'), ms(7, 'Audit', '2026-12-15'), ms(8, 'Too far', '2027-01-05'),
+    ])
+    respond('GET /api/projects', [{ ...project, projected_end_date: '2026-11-30' }])
+    asEmployee('/', { active_milestone_id: null })
+    const card = (await screen.findByText('Upcoming deadlines')).closest('.MuiCard-root')
+    await waitFor(() => expect(within(card).getAllByRole('listitem')).toHaveLength(5))
+    expect(within(card).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Rack row 1 · due Nov 22, 2026' + project.name,
+      'Project deadline · due Nov 30, 2026' + project.name,
+      'Unrack row 9 · due Dec 2, 2026' + project.name,
+      'Wipe disks · due Dec 10, 2026' + project.name,
+      'Recycle · due Dec 12, 2026' + project.name,
+    ])
+    expect(lastCall('GET /api/milestones').query).toEqual({ start: '2026-11-20', end: '2026-12-20' })
+    expect(within(card).getByRole('link', { name: 'Open calendar' }).getAttribute('href')).toBe('/calendar')
+  })
+
+  it('says when nothing is due soon, and shows deadline load errors', async () => {
+    onDay('2026-11-20')
+    respond('GET /api/milestones', [])
+    const { unmount } = asEmployee('/', { active_milestone_id: null })
+    expect(await screen.findByText('Nothing due in the next 30 days')).toBeTruthy()
+    unmount()
+
+    respond('GET /api/milestones', { detail: 'Milestones are unavailable' }, 503)
+    asEmployee('/', { active_milestone_id: null })
+    expect(await screen.findByText('Milestones are unavailable')).toBeTruthy()
+  })
+
   it('this week\'s warning follows the hours shown, not only the server\'s flag', async () => {
     asEmployee('/', { hours_this_week: '42', over_limit_this_week: false })
     expect(await screen.findByText("You're in overtime: 2 h over a 40-hour week.")).toBeTruthy()

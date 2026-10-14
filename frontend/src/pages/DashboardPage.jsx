@@ -66,7 +66,8 @@ export default function DashboardPage() {
                 </Typography>
               </CardContent>
             </Card>
-            <Card>
+            {/* Stays in view beside a long project list (64 px top bar + 24 px gap) */}
+            <Card sx={{ position: 'sticky', top: 88 }}>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ mb: 1 }}>Message board</Typography>
                 <MessageBoard filterable limit={20} compact />

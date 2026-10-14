@@ -15,6 +15,7 @@ import { useNotify } from '../context/NotificationsContext'
 import { EmptyState, ErrorAlert, Loading, PageHeader, ProjectStatusChip } from '../components/common'
 import LogHoursDialog from '../components/LogHoursDialog'
 import MessageBoard from '../components/MessageBoard'
+import UpcomingDeadlines from '../components/UpcomingDeadlines'
 import { day, hours } from '../utils/format'
 
 // Hours in a normal work week; more than this is overtime
@@ -137,6 +138,7 @@ export default function EmployeeHomePage() {
                 )}
               </CardContent>
             </Card>
+            <UpcomingDeadlines />
           </Stack>
           <Stack spacing={3}>
             <Card sx={{ borderLeft: 4, borderLeftColor: overLimit ? 'warning.main' : 'primary.main' }}>

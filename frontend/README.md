@@ -52,7 +52,7 @@ Managers don't see the audit log, can't create, delete or archive projects, and 
 
 | Screen        | What employees can do                                                                                  |
 | ------------- | ------------------------------------------------------------------------------------------------------ |
-| Home          | Their current milestone with its tasks to tick off, "Mark my part finished", this week's hours against 40, their projects, the message board |
+| Home          | Their current milestone with its tasks to tick off, "Mark my part finished", this week's hours against 40, their projects, upcoming deadlines (next 30 days), the message board |
 | My projects   | The open projects they're on with progress bars, without budgets or costs                               |
 | Calendar      | Milestones and deadlines of their projects                                                              |
 | Project page  | Details, teammates, milestones (tick off tasks and mark their part finished on milestones they're assigned to), deliverables, their own hours with "Log hours", the message board |

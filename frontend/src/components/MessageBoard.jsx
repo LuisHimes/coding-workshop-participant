@@ -15,7 +15,8 @@ import { dateTime } from '../utils/format'
 
 /**
  * The message board. `filterable` adds a picker to switch between all boards
- * and one project's board, plus "Show older posts" (the home page uses this).
+ * and one project's board, posts that scroll inside the card, and "Show older
+ * posts" (the home page uses this).
  */
 export default function MessageBoard({ filterable = false, ...props }) {
   return filterable ? <FilterableBoard {...props} /> : <Board {...props} />
@@ -38,7 +39,7 @@ function FilterableBoard({ limit: pageSize = 20, compact = false }) {
         <MenuItem value="">All boards</MenuItem>
         {boards.map((p) => <MenuItem key={p.id} value={String(p.id)}>{p.name}</MenuItem>)}
       </TextField>
-      <Board key={boardId || 'all'} projectId={boardId ? Number(boardId) : null} limit={limit} compact={compact}
+      <Board key={boardId || 'all'} projectId={boardId ? Number(boardId) : null} limit={limit} compact={compact} scrollable
         onShowMore={() => setLimit((current) => current + pageSize)} />
     </>
   )
@@ -50,7 +51,7 @@ function FilterableBoard({ limit: pageSize = 20, compact = false }) {
  * everyone or any project, managers to their own projects. Authors delete their
  * own posts; admins delete any.
  */
-function Board({ projectId = null, limit = 50, compact = false, readOnly = false, onShowMore }) {
+function Board({ projectId = null, limit = 50, compact = false, readOnly = false, scrollable = false, onShowMore }) {
   const directory = useDirectory()
   const notify = useNotify()
   const { user } = useAuth()
@@ -128,6 +129,13 @@ function Board({ projectId = null, limit = 50, compact = false, readOnly = false
       )}
 
       <ErrorAlert error={error} onRetry={reload} />
+      {/* On the home page the posts scroll inside the card, so it doesn't grow with every post. Focusable so
+          keyboard users can scroll it with the arrow keys. */}
+      <Box {...(scrollable && {
+        role: 'region', 'aria-label': 'Posts', tabIndex: 0,
+        // At most 480 px, and short enough that the whole card fits on screen beside the dashboard's project list
+        sx: { maxHeight: 'min(480px, calc(100vh - 440px))', minHeight: 200, overflowY: 'auto', pr: 1, '&:focus-visible': { outline: 2, outlineColor: 'primary.main', outlineOffset: 2 } },
+      })}>
       {loading && !data ? (
         <Loading />
       ) : data?.length === 0 ? (
@@ -166,6 +174,7 @@ function Board({ projectId = null, limit = 50, compact = false, readOnly = false
       {onShowMore && data?.length >= limit && (
         <Button size="small" onClick={onShowMore} sx={{ mt: 1, ml: -1 }}>Show older posts</Button>
       )}
+      </Box>
 
       <ConfirmDialog
         open={Boolean(deleting)}

@@ -67,10 +67,11 @@ function Overview({ project, onChanged }) {
           {milestones.data && <ProjectProgressBar project={project} milestones={milestones.data} />}
         </CardContent>
       </Card>
-      <Card>
+      {/* Employees don't see the Health card (it shows costs), so Details takes the full width */}
+      <Card sx={isEmployee ? { gridColumn: '1 / -1' } : undefined}>
         <CardContent>
           <Typography variant="subtitle1" sx={{ mb: 2 }}>Details</Typography>
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: `repeat(${isEmployee ? 4 : 2}, minmax(0, 1fr))` }}>
             <Field label="Manager">{directory.userName(project.manager_id)}</Field>
             <Field label="Status"><ProjectStatusChip project={project} /></Field>
             <Field label="Start date">{day(project.start_date)}</Field>

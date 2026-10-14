@@ -12,6 +12,7 @@ import { useNotify } from '../context/NotificationsContext'
 import FormDialog from './FormDialog'
 import { ConfirmDialog, EmptyState } from './common'
 import { day, hours } from '../utils/format'
+import { useRole } from '../context/AuthContext'
 
 /**
  * Logged hours with a total row. `showProject` adds the project column; `editable` adds
@@ -20,6 +21,9 @@ import { day, hours } from '../utils/format'
  */
 export default function TimeEntriesTable({ entries, showProject = true, editable = false, onChanged }) {
   const directory = useDirectory()
+  // Employees only ever see their own entries, so the Employee column would repeat their name
+  const { isEmployee } = useRole()
+  const showEmployee = !isEmployee
   const notify = useNotify()
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
@@ -35,7 +39,7 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
           <TableHead>
             <TableRow>
               <TableCell>Date</TableCell>
-              <TableCell>Employee</TableCell>
+              {showEmployee && <TableCell>Employee</TableCell>}
               {showProject && <TableCell>Project</TableCell>}
               <TableCell>Description</TableCell>
               <TableCell align="right">Hours</TableCell>
@@ -46,7 +50,7 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
             {entries.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{day(entry.work_date)}</TableCell>
-                <TableCell>{directory.userName(entry.user_id)}</TableCell>
+                {showEmployee && <TableCell>{directory.userName(entry.user_id)}</TableCell>}
                 {showProject && <TableCell>{directory.projectName(entry.project_id)}</TableCell>}
                 <TableCell sx={{ maxWidth: 360 }}>{entry.description || '—'}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{hours(entry.hours)}</TableCell>
@@ -66,7 +70,7 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell colSpan={showProject ? 4 : 3} sx={{ fontWeight: 600 }}>Total</TableCell>
+              <TableCell colSpan={2 + (showEmployee ? 1 : 0) + (showProject ? 1 : 0)} sx={{ fontWeight: 600 }}>Total</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>{hours(total)}</TableCell>
               {editable && <TableCell />}
             </TableRow>
