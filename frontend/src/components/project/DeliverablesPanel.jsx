@@ -21,7 +21,7 @@ export default function DeliverablesPanel({ project }) {
             <Stack sx={{ alignItems: 'center' }}>
               <Box sx={{
                 width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 14,
-                bgcolor: d.status === 'completed' ? 'success.main' : d.status === 'in_progress' ? 'primary.main' : 'grey.200',
+                bgcolor: d.status === 'completed' ? 'success.main' : d.status === 'in_progress' ? 'primary.main' : 'action.disabledBackground',
                 color: d.status === 'not_started' ? 'text.secondary' : 'common.white',
               }}>
                 {d.sequence}

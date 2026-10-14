@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material'
 import { useAuth } from '../auth/AuthContext'
 import { ErrorAlert } from '../components/common'
+import { ColorModeButton } from '../components/ColorMode'
 
 export default function LoginPage() {
   const { login, notice } = useAuth()
@@ -27,6 +28,7 @@ export default function LoginPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', px: 2, bgcolor: 'background.default' }}>
+      <Box sx={{ position: 'fixed', top: 12, right: 12 }}><ColorModeButton /></Box>
       <Card sx={{ width: '100%', maxWidth: 400 }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h5" component="h1">Project Tracker</Typography>

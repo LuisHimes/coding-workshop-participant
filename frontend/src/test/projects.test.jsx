@@ -382,16 +382,15 @@ describe('project page', () => {
     expect(screen.queryByRole('img')).toBeNull()
   })
 
-  it('deleting a completed project can archive it as completed; failures stay in the dialog', async () => {
-    respond('GET /api/projects/1', { ...project, status: 'completed' })
+  it('deleting a project archives it as deleted without asking for a reason; failures stay in the dialog', async () => {
     respond('DELETE /api/projects/1', { detail: 'Not allowed right now' }, 409)
     renderAt('/projects/1')
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     const dialog = await screen.findByRole('dialog', { name: 'Delete this project?' })
-    await choose(dialog, /Reason/, 'Completed (only for completed projects)')
+    expect(within(dialog).queryByRole('combobox')).toBeNull()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete project' }))
     expect(await within(dialog).findByText('Not allowed right now')).toBeTruthy()
-    expect(lastBody('DELETE /api/projects/1')).toEqual({ reason: 'completed' })
+    expect(lastBody('DELETE /api/projects/1')).toEqual({ reason: 'deleted' })
 
     respond('DELETE /api/projects/1', { ...project, archived: true })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete project' }))
@@ -399,13 +398,10 @@ describe('project page', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('open projects can only be deleted, not archived as completed, and cancelling deletes nothing', async () => {
+  it('cancelling a delete deletes nothing', async () => {
     renderAt('/projects/1')
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.mouseDown(within(dialog).getByRole('combobox', { name: /Reason/ }))
-    expect((await screen.findByRole('option', { name: /Completed/ })).getAttribute('aria-disabled')).toBe('true')
-    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(calls.some((c) => c.route === 'DELETE /api/projects/1')).toBe(false)

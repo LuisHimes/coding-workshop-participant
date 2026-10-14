@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom'
 import {
-  Alert, Box, Button, Card, CardContent, Link, List, ListItem, MenuItem, Stack, Tab, Tabs, TextField, Typography,
+  Alert, Box, Button, Card, CardContent, Link, List, ListItem, Stack, Tab, Tabs, Typography,
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import AddIcon from '@mui/icons-material/Add'
@@ -171,7 +171,6 @@ export default function ProjectDetailPage() {
   const [editing, setEditing] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [unarchiving, setUnarchiving] = useState(false)
-  const [reason, setReason] = useState('deleted')
 
   const back = <Link component={RouterLink} to="/projects" underline="hover" variant="body2">← Projects</Link>
 
@@ -194,7 +193,7 @@ export default function ProjectDetailPage() {
               <Button startIcon={<UnarchiveIcon />} variant="contained" onClick={() => setUnarchiving(true)}>Unarchive</Button>
             ) : (
               <Button startIcon={<ArchiveIcon />} color="error" variant="outlined"
-                onClick={() => { setReason('deleted'); setArchiving(true) }}>Delete</Button>
+                onClick={() => setArchiving(true)}>Delete</Button>
             )}
           </>
         }
@@ -224,13 +223,9 @@ export default function ProjectDetailPage() {
         confirmLabel="Delete project"
         destructive
         onClose={() => setArchiving(false)}
-        onConfirm={async () => { await projectsApi.remove(project.id, reason); notify('Project archived'); changed() }}
-      >
-        <TextField id="archive-reason" select label="Reason" value={reason} onChange={(e) => setReason(e.target.value)} sx={{ mt: 2 }}>
-          <MenuItem value="deleted">Deleted</MenuItem>
-          <MenuItem value="completed" disabled={project.status !== 'completed'}>Completed (only for completed projects)</MenuItem>
-        </TextField>
-      </ConfirmDialog>
+        // Open projects are only ever deleted: completing a project archives it as completed already
+        onConfirm={async () => { await projectsApi.remove(project.id); notify('Project archived'); changed() }}
+      />
 
       <ConfirmDialog
         open={unarchiving}

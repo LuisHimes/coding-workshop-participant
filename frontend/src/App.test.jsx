@@ -106,7 +106,7 @@ describe('admin screens', () => {
     expect(await screen.findByText('Mark finished')).toBeTruthy()
   })
 
-  it('deleting a project archives it with the chosen reason', async () => {
+  it('deleting a project archives it as deleted', async () => {
     respond('DELETE /api/projects/1', { id: 1, archived: true })
     renderAt('/projects/1')
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))

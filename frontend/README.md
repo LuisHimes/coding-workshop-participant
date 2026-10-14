@@ -13,7 +13,7 @@ It covers every admin, manager and employee feature. Each screen shows only what
 | Dashboard       | Open, at-risk and off-track projects, over-allocated employees, labor cost against budget, project status table, message board |
 | Projects        | Search and filter (status, open or archived); each open project's progress bar; create projects with a manager, dates, hours and budget |
 | Calendar        | Month view of milestones as bars across their dates, colored by state (overdue in red), with milestone and project deadlines highlighted; filter by project; a list of the month's deadlines |
-| Project page    | Progress bar (milestones placed on the timeline by state, with today marked); edit everything including budget and manager; delete (archive) with a reason; unarchive; budget estimate with "Use as budget"; health and deadline risk |
+| Project page    | Progress bar (milestones placed on the timeline by state, with today marked); edit everything including budget and manager; delete (archives it, kept for history); unarchive; budget estimate with "Use as budget"; health and deadline risk |
 | · Team          | Add employees with planned hours (warns above 40 h/week), add a whole team, change hours, remove     |
 | · Milestones    | Add, edit, start, complete, reopen and delete milestones; add, tick off, rename and delete tasks; assign members and mark their part finished |
 | · Deliverables  | The dependency chain: order, what each milestone waits on, progress and assignees                    |
@@ -26,6 +26,8 @@ It covers every admin, manager and employee feature. Each screen shows only what
 | Message board   | Announcements to everyone or posts to a project; delete                                               |
 | Audit log       | Every change and login, filtered by record type, record, user and date; changes shown as old → new    |
 | Your profile    | Edit name and email; change password                                                                  |
+
+Every screen, including login, has an **Appearance** button in the top bar: light or dark mode follows the browser's setting until someone picks Light or Dark, which is remembered in that browser.
 
 ## Manager features
 
@@ -68,7 +70,7 @@ frontend/
 └── src/
     ├── main.jsx              # Entry point
     ├── App.jsx               # Providers and routes
-    ├── theme.js              # Material UI theme
+    ├── theme.js              # Material UI light and dark themes (chosen in components/ColorMode.jsx)
     ├── api/
     │   ├── client.js         # fetch wrapper: base URL, token, error messages
     │   └── endpoints.js      # Every backend endpoint, grouped by feature Lambda

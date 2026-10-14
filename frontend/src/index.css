@@ -1,6 +1,15 @@
-/* Material UI's CssBaseline handles the reset; this only sets the page background before React loads. */
+/* Material UI's CssBaseline handles the reset; this only sets the page background before React loads,
+   following the browser's light or dark setting (the app then applies the person's choice). */
 html,
 body {
   margin: 0;
   background: #f5f7f8;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html,
+  body {
+    background: #0f1419;
+  }
 }

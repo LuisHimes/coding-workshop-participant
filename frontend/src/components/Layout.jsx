@@ -14,6 +14,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import ForumIcon from '@mui/icons-material/Forum'
 import HistoryIcon from '@mui/icons-material/History'
 import { useAuth } from '../auth/AuthContext'
+import { ColorModeButton } from './ColorMode'
 import { ROLE_LABELS } from '../utils/format'
 
 const DRAWER_WIDTH = 232
@@ -94,6 +95,7 @@ export default function Layout() {
       >
         <Toolbar>
           <Box sx={{ flex: 1 }} />
+          <ColorModeButton />
           <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)} aria-label="Account menu">
             <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 14 }}>
               {user.first_name[0]}{user.last_name[0]}

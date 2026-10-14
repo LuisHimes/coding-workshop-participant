@@ -2,6 +2,7 @@ import { Box, Button, Card, CardContent, Typography } from '@mui/material'
 import { useAuth } from '../auth/AuthContext'
 import { useNotify } from '../components/Notifications'
 import PasswordForm from '../components/PasswordForm'
+import { ColorModeButton } from '../components/ColorMode'
 
 /** Shown after logging in with a temporary password; nothing else is available until it's changed. */
 export default function ChangePasswordPage() {
@@ -10,6 +11,7 @@ export default function ChangePasswordPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', px: 2, bgcolor: 'background.default' }}>
+      <Box sx={{ position: 'fixed', top: 12, right: 12 }}><ColorModeButton /></Box>
       <Card sx={{ width: '100%', maxWidth: 420 }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h5" component="h1">Set your password</Typography>

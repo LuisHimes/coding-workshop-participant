@@ -13,7 +13,7 @@ export function milestoneState(milestone, today = todayIso()) {
 export const MILESTONE_STATES = {
   completed: { label: 'Completed', color: 'success.main', text: 'success.contrastText' },
   in_progress: { label: 'In progress', color: 'primary.main', text: 'primary.contrastText' },
-  not_started: { label: 'Not started', color: 'grey.300', text: 'text.primary' },
+  not_started: { label: 'Not started', color: 'action.disabledBackground', text: 'text.primary' },
   overdue: { label: 'Overdue', color: 'error.main', text: 'error.contrastText' },
 }
 

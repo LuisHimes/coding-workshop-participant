@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { CssBaseline, ThemeProvider } from '@mui/material'
-import { theme } from './theme'
+import { ColorModeProvider } from './components/ColorMode'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { NotificationProvider } from './components/Notifications'
 import { DirectoryProvider } from './components/Directory'
@@ -86,8 +85,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ColorModeProvider>
       <NotificationProvider>
         <AuthProvider>
           <BrowserRouter>
@@ -95,6 +93,6 @@ export default function App() {
           </BrowserRouter>
         </AuthProvider>
       </NotificationProvider>
-    </ThemeProvider>
+    </ColorModeProvider>
   )
 }
