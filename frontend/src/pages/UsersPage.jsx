@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import {
   Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton,
-  InputAdornment, MenuItem, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
+  InputAdornment, MenuItem, Stack, Switch, Table, TableBody, TableCell, TableHead, TableRow, TextField,
   Tooltip, Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
@@ -16,7 +16,7 @@ import { useDebounced } from '../hooks/useDebounced'
 import { useDirectory } from '../context/DirectoryContext'
 import { useNotify } from '../context/NotificationsContext'
 import FormDialog from '../components/FormDialog'
-import { ConfirmDialog, EmptyState, ErrorAlert, Loading, PageHeader, RoleChip, UserPicker } from '../components/common'
+import { ConfirmDialog, EmptyState, ErrorAlert, Loading, PageHeader, RoleChip, ScrollingTable, UserPicker } from '../components/common'
 import { ROLE_LABELS, fullName, money } from '../utils/format'
 
 const EMPTY_USER = { role: 'employee', first_name: '', last_name: '', email: '', job_title: '', salary: '', manager_id: null, temporary_password: '' }
@@ -177,8 +177,8 @@ export default function UsersPage() {
         {loading && !data ? <Loading /> : data?.length === 0 ? (
           <EmptyState title="No users match">Change the filters, or add a user.</EmptyState>
         ) : (
-          <TableContainer>
-            <Table size="small">
+          <ScrollingTable label="People">
+            <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
@@ -217,7 +217,7 @@ export default function UsersPage() {
                 ))}
               </TableBody>
             </Table>
-          </TableContainer>
+          </ScrollingTable>
         )}
       </Card>
 

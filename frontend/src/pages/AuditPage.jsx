@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import {
-  Box, Button, Card, Chip, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
+  Box, Button, Card, Chip, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField,
   Typography,
 } from '@mui/material'
 import { audit as auditApi } from '../api/endpoints'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
 import { useDirectory } from '../context/DirectoryContext'
-import { EmptyState, ErrorAlert, Loading, PageHeader, UserPicker } from '../components/common'
+import { EmptyState, ErrorAlert, Loading, PageHeader, ScrollingTable, UserPicker } from '../components/common'
 import { dateTime } from '../utils/format'
 
 // Backend table names -> labels for the "What changed" filter and the Record column
@@ -127,8 +127,8 @@ export default function AuditPage() {
         </Stack>
         <ErrorAlert error={error} onRetry={reload} />
         {loading && !data ? <Loading /> : data?.length === 0 ? <EmptyState title="Nothing matches these filters" /> : (
-          <TableContainer>
-            <Table size="small">
+          <ScrollingTable label="Audit log entries">
+            <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
                   <TableCell>When</TableCell>
@@ -150,7 +150,7 @@ export default function AuditPage() {
                 ))}
               </TableBody>
             </Table>
-          </TableContainer>
+          </ScrollingTable>
         )}
       </Card>
     </>

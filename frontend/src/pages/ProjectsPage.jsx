@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Button, Card, InputAdornment, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Button, Card, InputAdornment, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow,
   TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
@@ -13,7 +13,7 @@ import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
 import { useDirectory } from '../context/DirectoryContext'
-import { EmptyState, ErrorAlert, Loading, PageHeader, ProjectStatusChip } from '../components/common'
+import { EmptyState, ErrorAlert, Loading, PageHeader, ProjectStatusChip, ScrollingTable } from '../components/common'
 import ProjectFormDialog from '../components/ProjectFormDialog'
 import ProjectProgressBar from '../components/ProjectProgressBar'
 import { PROJECT_STATUS_LABELS, day, hours, money } from '../utils/format'
@@ -81,8 +81,8 @@ export default function ProjectsPage() {
             {isAdmin ? 'Change the filters, or create a project.' : isEmployee ? 'Change the filters. Your manager adds you to projects.' : 'Change the filters. Projects appear here once an admin makes you their manager.'}
           </EmptyState>
         ) : (
-          <TableContainer>
-            <Table size="small">
+          <ScrollingTable label="Projects">
+            <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
@@ -120,7 +120,7 @@ export default function ProjectsPage() {
                 ))}
               </TableBody>
             </Table>
-          </TableContainer>
+          </ScrollingTable>
         )}
       </Card>
       <ProjectFormDialog

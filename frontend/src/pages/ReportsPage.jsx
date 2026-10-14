@@ -3,13 +3,13 @@
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
   Alert, Box, Card, CardContent, Chip, FormControlLabel, Link, List, ListItem, MenuItem, Stack, Switch, Tab, Table,
-  TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, TextField, Typography,
+  TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography,
 } from '@mui/material'
 import { reports, teams as teamsApi } from '../api/endpoints'
 import { useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDirectory } from '../context/DirectoryContext'
-import { EmptyState, ErrorAlert, HoursChip, Loading, PageHeader, RiskChip } from '../components/common'
+import { EmptyState, ErrorAlert, HoursChip, Loading, PageHeader, RiskChip, ScrollingTable } from '../components/common'
 import ProjectHealthTable from '../components/ProjectHealthTable'
 import { day, hours, money, percent } from '../utils/format'
 
@@ -82,8 +82,8 @@ function BudgetReport() {
     <Card>
       <ErrorAlert error={error} onRetry={reload} />
       {loading && !data ? <Loading /> : data?.length === 0 ? <EmptyState title="No open projects" /> : (
-        <TableContainer>
-          <Table size="small">
+        <ScrollingTable label="Budget by project">
+          <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
                 <TableCell>Project</TableCell>
@@ -114,7 +114,7 @@ function BudgetReport() {
               ))}
             </TableBody>
           </Table>
-        </TableContainer>
+        </ScrollingTable>
       )}
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', p: 2 }}>
         Labor cost is hours logged × salary ÷ 2,080. Estimated cost is what the team's planned hours cost over the whole timeline.
@@ -156,8 +156,8 @@ function AllocationReport({ overAllocatedOnly }) {
       {loading && !data ? <Loading /> : data?.length === 0 ? (
         <EmptyState title={overAllocatedOnly ? 'Nobody is working overtime' : 'No employees to show'} />
       ) : (
-        <TableContainer>
-          <Table size="small">
+        <ScrollingTable label="Employees and their planned hours">
+          <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
                 <TableCell>Employee</TableCell>
@@ -195,7 +195,7 @@ function AllocationReport({ overAllocatedOnly }) {
               ))}
             </TableBody>
           </Table>
-        </TableContainer>
+        </ScrollingTable>
       )}
     </Card>
   )

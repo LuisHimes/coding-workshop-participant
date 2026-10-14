@@ -5,7 +5,7 @@ import {
   Box, LinearProgress, Link, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
 } from '@mui/material'
 import { useDirectory } from '../context/DirectoryContext'
-import { EmptyState, RiskChip } from './common'
+import { EmptyState, RiskChip, ScrollingTable } from './common'
 import { day, money, percent } from '../utils/format'
 
 /** A thin progress bar with its percentage; the bar stops at 100% but the label shows the real value. */
@@ -23,14 +23,16 @@ function Progress({ value, color }) {
 
 /**
  * Status, completion, budget and deadline risk of each project (from /reports/projects
- * or /reports/home). `compact` drops the manager, timeline, budget and cost columns.
+ * or /reports/home). `compact` drops the manager, timeline, budget and cost columns and doesn't
+ * scroll (the dashboard); the full table scrolls on its own with the headings kept in view.
  */
 export default function ProjectHealthTable({ projects, compact = false }) {
   const directory = useDirectory()
   if (!projects.length) return <EmptyState title="No projects to show" />
+  const Container = compact ? TableContainer : ScrollingTable
   return (
-    <TableContainer>
-      <Table size="small">
+    <Container label="Project status">
+      <Table size="small" stickyHeader={!compact}>
         <TableHead>
           <TableRow>
             <TableCell>Project</TableCell>
@@ -76,6 +78,6 @@ export default function ProjectHealthTable({ projects, compact = false }) {
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+    </Container>
   )
 }

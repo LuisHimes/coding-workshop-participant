@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import {
-  IconButton, Table, TableBody, TableCell, TableContainer, TableFooter, TableHead, TableRow, TextField, Tooltip,
+  IconButton, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, TextField, Tooltip,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
@@ -10,7 +10,7 @@ import { timeEntries as timeEntriesApi } from '../api/endpoints'
 import { useDirectory } from '../context/DirectoryContext'
 import { useNotify } from '../context/NotificationsContext'
 import FormDialog from './FormDialog'
-import { ConfirmDialog, EmptyState } from './common'
+import { ConfirmDialog, EmptyState, ScrollingTable } from './common'
 import { day, hours } from '../utils/format'
 import { useRole } from '../context/AuthContext'
 
@@ -34,8 +34,8 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
 
   return (
     <>
-      <TableContainer>
-        <Table size="small">
+      <ScrollingTable label="Time entries">
+        <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>Date</TableCell>
@@ -68,7 +68,8 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
               </TableRow>
             ))}
           </TableBody>
-          <TableFooter>
+          {/* The total stays pinned to the bottom while the entries scroll */}
+          <TableFooter sx={{ position: 'sticky', bottom: 0, zIndex: 2, bgcolor: 'background.paper', '& td': { borderTop: 1, borderColor: 'divider' } }}>
             <TableRow>
               <TableCell colSpan={2 + (showEmployee ? 1 : 0) + (showProject ? 1 : 0)} sx={{ fontWeight: 600 }}>Total</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>{hours(total)}</TableCell>
@@ -76,7 +77,7 @@ export default function TimeEntriesTable({ entries, showProject = true, editable
             </TableRow>
           </TableFooter>
         </Table>
-      </TableContainer>
+      </ScrollingTable>
 
       <FormDialog open={Boolean(editing)} title="Correct time entry" onClose={() => setEditing(null)}
         onSubmit={async () => {

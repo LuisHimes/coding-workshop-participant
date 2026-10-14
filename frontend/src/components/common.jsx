@@ -3,11 +3,25 @@
 import { useState } from 'react'
 import {
   Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogContentText, DialogTitle, Stack, TextField, Tooltip, Typography,
+  DialogContentText, DialogTitle, Stack, TableContainer, TextField, Tooltip, Typography,
 } from '@mui/material'
 import {
   MILESTONE_STATUS_LABELS, PROJECT_STATUS_LABELS, RISK_LABELS, ROLE_LABELS, fullName,
 } from '../utils/format'
+
+/**
+ * A table area that scrolls on its own, so long lists don't stretch the page. Pair it with
+ * <Table stickyHeader> so the column headings stay visible. It fills the window below the page's
+ * header and filters (never less than 360 px), and is focusable so keyboard users can scroll it.
+ */
+export function ScrollingTable({ label, children }) {
+  return (
+    <TableContainer role="region" aria-label={label} tabIndex={0}
+      sx={{ maxHeight: 'max(360px, calc(100vh - 340px))', '&:focus-visible': { outline: 2, outlineColor: 'primary.main', outlineOffset: -2 } }}>
+      {children}
+    </TableContainer>
+  )
+}
 
 /** A screen's title row: optional `back` link above, `subtitle` below, and `actions` (buttons) on the right. */
 export function PageHeader({ title, subtitle, actions, back }) {

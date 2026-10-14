@@ -1073,73 +1073,73 @@ describe('calendar', () => {
   it('filters to one project and opens its milestones', async () => {
     onDay('2026-10-14')
     respond('GET /api/projects', [project, archivedProject, newDc])
-    respond('GET /api/milestones', [m1, dcMilestone])
+    respond('GET /api/milestones', [m1, { ...m1, id: 31, title: 'Rack row 5', start_date: '2026-10-12', end_date: '2026-10-20' }, dcMilestone])
     respond('GET /api/projects/3', newDc)
     respond('GET /api/projects/3/milestones', [dcMilestone])
     respond('GET /api/projects/3/members', [])
     renderAt('/calendar')
-    expect(await screen.findByRole('button', { name: /Build new DC: milestone 1, Pour concrete/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Decommission 1000 servers: milestone 1/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Build new DC: project kickoff Oct 1, 2026' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Build new DC: milestone 1. Pour concrete starts Oct 5, 2026' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Decommission 1000 servers: milestone 1. Rack row 5 starts Oct 12, 2026' })).toBeTruthy()
 
     fireEvent.mouseDown(screen.getByRole('combobox', { name: /Project/ }))
     const options = (await screen.findAllByRole('option')).map((o) => o.textContent)
     expect(options).toEqual(['All projects', 'Decommission 1000 servers', 'Build new DC'])  // no archived projects
     fireEvent.click(screen.getByRole('option', { name: 'Build new DC' }))
     await waitFor(() => expect(window.location.search).toBe('?month=2026-10&project=3'))
-    expect(screen.queryByRole('button', { name: /Decommission 1000 servers: milestone 1/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Rack row 5/ })).toBeNull()
 
-    fireEvent.click(screen.getByText('Build new DC · 1. Pour concrete'))
+    fireEvent.click(screen.getByText('Build new DC · 1. Pour concrete due'))
     expect(await screen.findByRole('heading', { name: 'Build new DC' })).toBeTruthy()
     expect(window.location.search).toBe('?tab=milestones')
   })
 
-  it('flags overdue project deadlines and lists project deadlines before milestones on the same day', async () => {
+  it('orders a day\'s key dates deadlines first, flags overdue ones, and lists the rest behind "+N more"', async () => {
     onDay('2026-11-10')
     const sameDay = { ...newDc, id: 4, name: 'Move racks' }
     respond('GET /api/projects', [project, newDc, sameDay])
-    respond('GET /api/milestones', [{ ...dcMilestone, start_date: '2026-10-20', end_date: '2026-10-31', status: 'completed' }])
+    respond('GET /api/milestones', [
+      { ...dcMilestone, start_date: '2026-10-20', end_date: '2026-10-31', status: 'completed' },
+      { ...dcMilestone, id: 32, sequence: 2, title: 'Inspect', start_date: '2026-10-31', end_date: '2026-11-05', status: 'not_started' },
+    ])
     renderAt('/calendar?month=2026-10')
     expect(await screen.findByRole('button', { name: 'Build new DC: project due Oct 31, 2026, overdue' })).toBeTruthy()
-    const list = screen.getByText('Deadlines in October 2026').parentElement
+    const list = screen.getByRole('region', { name: 'Key dates in October 2026' })
+    expect(list.getAttribute('tabindex')).toBe('0')  // scrollable by keyboard
     expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual([
-      expect.stringMatching(/^Project due: (Build new DC|Move racks)Oct 31, 2026 · overdue$/),
-      expect.stringMatching(/^Project due: (Build new DC|Move racks)Oct 31, 2026 · overdue$/),
-      'Build new DC · 1. Pour concreteOct 31, 2026 · Completed',
+      'Kickoff: Build new DCOct 1, 2026', 'Kickoff: Move racksOct 1, 2026',
+      'Build new DC · 1. Pour concrete startsOct 20, 2026 · runs to Oct 31, 2026',
+      'Project due: Build new DCOct 31, 2026 · overdue', 'Project due: Move racksOct 31, 2026 · overdue',
+      'Build new DC · 1. Pour concrete dueOct 31, 2026 · Completed',
+      'Build new DC · 2. Inspect startsOct 31, 2026 · runs to Nov 5, 2026',
     ])
-    // The day shows the project deadline, which outranks the milestone's
-    expect(screen.getByText('Project due')).toBeTruthy()
-    expect(screen.queryByText('Due')).toBeNull()
+    // Oct 31 has four key dates: three show, the fourth is behind "+1 more"
+    expect(screen.queryByRole('button', { name: 'Build new DC: milestone 2. Inspect starts Oct 31, 2026' })).toBeNull()
+    const more = screen.getByRole('button', { name: 'Show all 4 key dates on Oct 31, 2026' })
+    expect(more.textContent).toBe('+1 more')
+    fireEvent.click(more)
+    let dialog = await screen.findByRole('dialog', { name: 'Key dates on Oct 31, 2026' })
+    expect(within(dialog).getAllByRole('button')).toHaveLength(4)
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
-    // A project deadline opens the project's overview
+    // Picking a date in the dialog opens the project (a project deadline opens its overview)
     respond('GET /api/projects/3', newDc)
     respond('GET /api/projects/3/milestones', [])
-    fireEvent.click(screen.getByRole('button', { name: 'Build new DC: project due Oct 31, 2026, overdue' }))
+    fireEvent.click(more)
+    dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByText('Project due: Build new DC'))
     expect(await screen.findByRole('heading', { name: 'Build new DC' })).toBeTruthy()
     expect(window.location.pathname).toBe('/projects/3')
     expect(window.location.search).toBe('')
-  })
-
-  it('stacks overlapping milestones and reuses free lanes within a week', async () => {
-    onDay('2026-10-14')
-    respond('GET /api/milestones', [
-      { ...m1, id: 40, title: 'Long one', start_date: '2026-10-12', end_date: '2026-10-16' },
-      { ...m1, id: 41, title: 'Same start', start_date: '2026-10-12', end_date: '2026-10-13' },
-      { ...m1, id: 42, title: 'Later', start_date: '2026-10-15', end_date: '2026-10-17' },
-    ])
-    renderAt('/calendar?month=2026-10')
-    for (const title of ['Long one', 'Same start', 'Later']) {
-      expect(await screen.findByRole('button', { name: new RegExp(`milestone 1, ${title},`) })).toBeTruthy()
-    }
-    // "Later" fits in the lane "Same start" freed, so the week needs two lanes
-    const week = screen.getByRole('button', { name: /milestone 1, Long one,/ }).parentElement
-    expect(week.querySelectorAll('button')).toHaveLength(3)
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('shows the error when milestones fail to load', async () => {
     respond('GET /api/milestones', { detail: 'Calendar unavailable' }, 500)
     renderAt('/calendar?month=2026-10')
     expect(await screen.findByText('Calendar unavailable')).toBeTruthy()
-    expect(screen.getByText('No deadlines this month')).toBeTruthy()
+    expect(screen.getByText('No key dates this month')).toBeTruthy()
     expect(unexpected).toEqual([])
   })
 })

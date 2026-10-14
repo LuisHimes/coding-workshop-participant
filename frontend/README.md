@@ -11,8 +11,8 @@ It covers every admin, manager and employee feature. Each screen shows only what
 | Screen          | What admins can do                                                                                   |
 | --------------- | ---------------------------------------------------------------------------------------------------- |
 | Dashboard       | Open, at-risk and off-track projects, employees in overtime, labor cost against budget (each number explained), project status table, and the message board with a filter for all boards or one project |
-| Projects        | Search and filter (status, open or archived); each open project's progress bar; create projects with a manager, dates, hours and budget |
-| Calendar        | Month view of milestones as bars across their dates, colored by state (overdue in red), with milestone and project deadlines highlighted; filter by project; a list of the month's deadlines |
+| Projects        | Search and filter (status, open or archived); long lists scroll with the headings kept in view; each open project's progress bar; create projects with a manager, dates, hours and budget |
+| Calendar        | Month view of key dates only: project kickoffs and deadlines, milestone starts and deadlines (deadlines colored by status, overdue in red); busy days show three and "+N more"; filter by project; a scrolling list of the month's key dates |
 | Project page    | Progress bar (milestones placed on the timeline by state, with today marked); edit everything including budget and manager; delete (archives it, kept for history); unarchive; budget estimate with "Use as budget"; health and deadline risk |
 | · Team          | Add employees with planned hours (warns above 40 h/week), add a whole team, change hours, remove     |
 | · Milestones    | Add, edit, start, complete, reopen and delete milestones; add, tick off, rename and delete tasks; assign members and mark their part finished |
@@ -37,7 +37,7 @@ Managers use the same screens, limited to their own work:
 | ------------- | -------------------------------------------------------------------------------------------------------- |
 | Dashboard     | Their open projects at a glance, plus the message board                                                  |
 | Projects      | Their own open projects with progress bars; edit details and status (not budget or manager); completing a project archives it |
-| Calendar      | Milestones and deadlines of their open projects                                                          |
+| Calendar      | Key dates (kickoffs, milestone starts, deadlines) of their open projects                                                        |
 | Project page  | Team (add employees or one of their teams), milestones, tasks, assignments, deliverables, hours (read-only), message board |
 | Employees     | Every employee, with salaries, read-only                                                                 |
 | Teams         | Create teams of their direct reports; manage members; rename; delete                                     |
@@ -54,7 +54,7 @@ Managers don't see the audit log, can't create, delete or archive projects, and 
 | ------------- | ------------------------------------------------------------------------------------------------------ |
 | Home          | Their current milestone with its tasks to tick off, "Mark my part finished", this week's hours against 40, their projects, upcoming deadlines (next 30 days), the message board |
 | My projects   | The open projects they're on with progress bars, without budgets or costs                               |
-| Calendar      | Milestones and deadlines of their projects                                                              |
+| Calendar      | Key dates (kickoffs, milestone starts, deadlines) of their projects                                                           |
 | Project page  | Details, teammates, milestones (tick off tasks and mark their part finished on milestones they're assigned to), deliverables, their own hours with "Log hours", the message board |
 | My hours      | Log, correct and delete their own hours; each save shows the week's total, flagged above 40              |
 | Message board | On the home page: read announcements and their projects' posts; post to their projects; delete their own posts |

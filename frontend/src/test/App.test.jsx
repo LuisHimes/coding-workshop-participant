@@ -49,7 +49,7 @@ describe('admin screens', () => {
   const pages = [
     ['/', 'Welcome back, Ada', 'Decommission 1000 servers'],
     ['/projects', 'Projects', 'Old intranet'],
-    ['/calendar?month=2026-10', 'Calendar', '1. Q1: 250 servers'],
+    ['/calendar?month=2026-11', 'Calendar', 'Due: Q1: 250 servers'],
     ['/users', 'Users', 'grace@example.com'],
     ['/teams', 'Teams', 'Racking crew'],
     ['/teams/5', 'Racking crew', 'Engineer'],
@@ -163,31 +163,42 @@ describe('progress bars and calendar', () => {
     expect(screen.getByRole('img', { name: /Q1: 250 servers overdue/ })).toBeTruthy()
   })
 
-  it('the calendar shows milestones and highlights deadlines for the month', async () => {
+  it('the calendar shows each month\'s key dates', async () => {
     onDay('2026-11-10')
     renderAt('/calendar')
     expect(await screen.findByRole('heading', { name: 'November 2026' })).toBeTruthy()
     // The grid runs Monday Oct 26 to Sunday Dec 6
     await waitFor(() => expect(calls.findLast((c) => c.route === 'GET /api/milestones').query).toEqual({ start: '2026-10-26', end: '2026-12-06' }))
-    expect(await screen.findByRole('button', { name: 'Decommission 1000 servers: milestone 1, Q1: 250 servers, In progress, due Nov 30, 2026' })).toBeTruthy()
-    // Q2 starts Dec 1, inside the grid's last week
-    expect(screen.getByRole('button', { name: /milestone 2, Q2: 500 servers, Not started/ })).toBeTruthy()
-    expect(screen.getByText('Due')).toBeTruthy()
-    expect(screen.getByText('Decommission 1000 servers · 1. Q1: 250 servers')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Decommission 1000 servers: milestone 1. Q1: 250 servers due Nov 30, 2026, In progress' })).toBeTruthy()
+    // Q2 starts Dec 1, inside the grid's last week, but the month's list only has November's dates
+    expect(screen.getByRole('button', { name: 'Decommission 1000 servers: milestone 2. Q2: 500 servers starts Dec 1, 2026' })).toBeTruthy()
+    expect(screen.getByText('Decommission 1000 servers · 1. Q1: 250 servers due')).toBeTruthy()
+    expect(screen.queryByText('Decommission 1000 servers · 2. Q2: 500 servers starts')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
     expect(await screen.findByRole('heading', { name: 'December 2026' })).toBeTruthy()
     expect(window.location.search).toBe('?month=2026-12')
     await waitFor(() => expect(calls.findLast((c) => c.route === 'GET /api/milestones').query).toEqual({ start: '2026-11-30', end: '2027-01-03' }))
-    expect(await screen.findByText('No deadlines this month')).toBeTruthy()
+    expect(await screen.findByText('Decommission 1000 servers · 2. Q2: 500 servers starts')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
+    expect(await screen.findByRole('heading', { name: 'January 2027' })).toBeTruthy()
+    expect(await screen.findByText('No key dates this month')).toBeTruthy()
   })
 
-  it('the calendar shows project deadlines and opens the project', async () => {
+  it('the calendar shows project kickoffs and deadlines and opens the project', async () => {
+    onDay('2026-09-01')
+    const { unmount } = renderAt('/calendar?month=2026-09')
+    expect(await screen.findByRole('button', { name: 'Decommission 1000 servers: project kickoff Sep 1, 2026' })).toBeTruthy()
+    // A milestone starting the same day is listed before the kickoff
+    expect(screen.getAllByRole('button', { name: /^Decommission 1000 servers: .*Sep 1, 2026/ }).map((b) => b.textContent))
+      .toEqual(['Starts: Q1: 250 servers', 'Kickoff: Decommission 1000 servers'])
+    unmount()
+
     onDay('2027-08-02')
     renderAt('/calendar?month=2027-08')
     const deadline = await screen.findByRole('button', { name: 'Decommission 1000 servers: project due Aug 31, 2027' })
-    expect(screen.getByText('Project due')).toBeTruthy()
-    expect(screen.getByText('Project due: Decommission 1000 servers')).toBeTruthy()
+    expect(screen.getAllByText('Project due: Decommission 1000 servers')).toHaveLength(2)  // on the day and in the month's list
     fireEvent.click(deadline)
     expect(await screen.findByRole('heading', { name: 'Decommission 1000 servers' })).toBeTruthy()
     expect(window.location.pathname).toBe('/projects/1')
