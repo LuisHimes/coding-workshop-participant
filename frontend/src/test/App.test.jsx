@@ -29,6 +29,16 @@ describe('logging in', () => {
     expect(await screen.findByText('Incorrect email or password')).toBeTruthy()
   })
 
+  it('warns while Caps Lock is on', async () => {
+    renderAt('/', { loggedIn: false })
+    const password = await screen.findByLabelText(/Password/)
+    expect(screen.queryByText('Caps Lock is on')).toBeNull()
+    fireEvent.keyDown(password, { key: 'A', modifierCapsLock: true })
+    expect(screen.getByText('Caps Lock is on')).toBeTruthy()
+    fireEvent.keyUp(screen.getByLabelText(/Email/), { key: 'CapsLock', modifierCapsLock: false })
+    expect(screen.queryByText('Caps Lock is on')).toBeNull()
+  })
+
   it('requires a new password after logging in with a temporary one', async () => {
     respond('GET /api/auth/me', { ...admin, must_change_password: true })
     renderAt('/projects')

@@ -7,7 +7,10 @@ import { useAuth } from '../context/AuthContext'
 import { ErrorAlert } from '../components/common'
 import { ColorModeButton } from '../components/ColorModeButton'
 
-/** Email and password login. Shows why the user was logged out (for example an expired session), if known. */
+/**
+ * Email and password login. Shows why the user was logged out (for example an expired session), if known,
+ * and warns while Caps Lock is on, since passwords are case-sensitive.
+ */
 export default function LoginPage() {
   const { login, notice } = useAuth()
   const navigate = useNavigate()
@@ -15,6 +18,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [capsLock, setCapsLock] = useState(false)
+
+  // Browsers only report Caps Lock on keyboard events, so check it on every key press in the form
+  const checkCapsLock = (event) => setCapsLock(event.getModifierState('CapsLock'))
 
   const submit = async (event) => {
     event.preventDefault()
@@ -40,7 +47,7 @@ export default function LoginPage() {
           </Typography>
           {notice && <Alert severity="info" sx={{ mb: 2 }}>{notice}</Alert>}
           <ErrorAlert error={error} />
-          <Stack component="form" spacing={2} onSubmit={submit}>
+          <Stack component="form" spacing={2} onSubmit={submit} onKeyDown={checkCapsLock} onKeyUp={checkCapsLock}>
             <TextField
               id="email"
               label="Email"
@@ -59,6 +66,8 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               required
+              helperText={capsLock ? 'Caps Lock is on' : ''}
+              slotProps={{ formHelperText: { sx: { color: 'warning.main' } } }}
             />
             <Button type="submit" variant="contained" size="large" disabled={busy}>
               {busy ? 'Logging in…' : 'Log in'}
