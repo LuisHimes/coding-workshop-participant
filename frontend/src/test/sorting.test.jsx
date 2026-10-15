@@ -179,4 +179,52 @@ describe('sortable tables', () => {
     expect(within(screen.getByRole('region', { name: 'Audit log entries' })).getAllByRole('row')[1].textContent).toContain('archive')
     expect(screen.getByText('System')).toBeTruthy()
   })
+
+  it('teams sort by every column', async () => {
+    const team = (id, name, extra) => ({
+      id, name, description: null, manager_id: 'MGR001', member_count: 1, created_at: '2026-09-05T09:00:00Z', updated_at: '', ...extra,
+    })
+    respond('GET /api/teams', [team(1, 'Racking crew', { member_count: 3 }), team(2, 'Night shift', { created_at: '2026-09-01T09:00:00Z' })])
+    renderAt('/teams')
+    await screen.findByText('Night shift')
+    for (const label of ['Team', 'Manager', 'Created']) sortBy(label)
+    expect(firstColumn('Teams')).toEqual(['Night shift', 'Racking crew'])  // created first
+    sortBy('Members')
+    sortBy('Members')
+    expect(firstColumn('Teams')).toEqual(['Racking crew', 'Night shift'])  // most members first
+  })
+
+  it('team members can be searched by name, job title or ID and sorted by every column', async () => {
+    const member = (id, first, last, jobTitle, addedAt) => ({
+      team_id: 5, user_id: id, first_name: first, last_name: last, job_title: jobTitle, is_active: true, added_at: addedAt,
+    })
+    respond('GET /api/teams/5/members', [
+      member('EMP001', 'Grace', 'Hopper', 'Engineer', '2026-09-05T09:00:00Z'),
+      member('EMP002', 'Alan', 'Turing', null, '2026-09-07T09:00:00Z'),
+      member('EMP003', 'Edsger', 'Dijkstra', 'Analyst', '2026-09-01T09:00:00Z'),
+    ])
+    renderAt('/teams/5')
+    await screen.findByText('Alan Turing')
+    const names = () => firstColumn('Team members').map((t) => t.replace(/ID.*/, ''))
+    sortBy('Name')
+    expect(names()).toEqual(['Alan Turing', 'Edsger Dijkstra', 'Grace Hopper'])
+    sortBy('Job title')
+    expect(names()).toEqual(['Edsger Dijkstra', 'Grace Hopper', 'Alan Turing'])  // no job title sorts last
+    sortBy('Added')
+    sortBy('Added')
+    expect(names()).toEqual(['Alan Turing', 'Grace Hopper', 'Edsger Dijkstra'])  // newest first
+    expect(screen.queryByRole('button', { name: 'Actions' })).toBeNull()
+
+    const search = screen.getByPlaceholderText(/Search members/)
+    fireEvent.change(search, { target: { value: ' grace ' } })
+    expect(names()).toEqual(['Grace Hopper'])
+    fireEvent.change(search, { target: { value: 'analyst' } })
+    expect(names()).toEqual(['Edsger Dijkstra'])
+    fireEvent.change(search, { target: { value: 'emp002' } })
+    expect(names()).toEqual(['Alan Turing'])
+    fireEvent.change(search, { target: { value: 'nobody' } })
+    expect(screen.getByText('No members match')).toBeTruthy()
+    fireEvent.change(search, { target: { value: '' } })
+    expect(names()).toHaveLength(3)
+  })
 })

@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Box, Button, Card, InputAdornment, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
-  Typography,
+  Box, Button, Card, InputAdornment, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
@@ -12,15 +11,17 @@ import { teams as teamsApi } from '../api/endpoints'
 import { useAuth, useRole } from '../context/AuthContext'
 import { useApiData } from '../hooks/useApiData'
 import { useDebounced } from '../hooks/useDebounced'
+import { useSort } from '../hooks/useSort'
 import { useDirectory } from '../context/DirectoryContext'
 import { useNotify } from '../context/NotificationsContext'
 import FormDialog from '../components/FormDialog'
-import { EmptyState, ErrorAlert, Loading, PageHeader, UserPicker } from '../components/common'
+import { EmptyState, ErrorAlert, Loading, PageHeader, ScrollingTable, SortableCell, UserPicker } from '../components/common'
 import { dateTime } from '../utils/format'
 
 /**
  * Teams list with search. Managers see and create their own teams; admins see every team, can
- * filter by manager, and pick the manager when creating one. Clicking a row opens the team.
+ * filter by manager, and pick the manager when creating one. Columns sort when their heading is clicked;
+ * clicking a row opens the team.
  */
 export default function TeamsPage() {
   const navigate = useNavigate()
@@ -35,6 +36,9 @@ export default function TeamsPage() {
     () => teamsApi.list({ q: search || undefined, manager_id: managerId || undefined }),
     [search, managerId],
   )
+  const sorting = useSort(data, {
+    name: (t) => t.name, manager: (t) => directory.userName(t.manager_id), members: (t) => t.member_count, created: (t) => t.created_at,
+  })
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ name: '', description: '', manager_id: null })
   const managers = directory.users.filter((u) => u.role === 'manager' && u.is_active)
@@ -63,18 +67,18 @@ export default function TeamsPage() {
         {loading && !data ? <Loading /> : data?.length === 0 ? (
           <EmptyState title="No teams yet">Create a team for a manager, then add their direct reports.</EmptyState>
         ) : (
-          <TableContainer>
-            <Table size="small">
+          <ScrollingTable label="Teams">
+            <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell>Team</TableCell>
-                  <TableCell>Manager</TableCell>
-                  <TableCell align="right">Members</TableCell>
-                  <TableCell>Created</TableCell>
+                  <SortableCell label="Team" sortKey="name" sorting={sorting} />
+                  <SortableCell label="Manager" sortKey="manager" sorting={sorting} />
+                  <SortableCell label="Members" sortKey="members" sorting={sorting} align="right" />
+                  <SortableCell label="Created" sortKey="created" sorting={sorting} />
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data?.map((team) => (
+                {sorting.sorted?.map((team) => (
                   <TableRow key={team.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/teams/${team.id}`)}>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>{team.name}</Typography>
@@ -87,7 +91,7 @@ export default function TeamsPage() {
                 ))}
               </TableBody>
             </Table>
-          </TableContainer>
+          </ScrollingTable>
         )}
       </Card>
 

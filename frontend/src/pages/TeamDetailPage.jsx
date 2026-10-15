@@ -3,22 +3,29 @@
 import { useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import {
-  Box, Button, Card, CardContent, IconButton, Link, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
+  Box, Button, Card, CardContent, IconButton, InputAdornment, Link, Stack, Table, TableBody, TableCell, TableHead,
   TableRow, TextField, Tooltip, Typography,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import SearchIcon from '@mui/icons-material/Search'
 import { teams as teamsApi } from '../api/endpoints'
 import { useApiData } from '../hooks/useApiData'
+import { useSort } from '../hooks/useSort'
 import { useDirectory } from '../context/DirectoryContext'
 import { useNotify } from '../context/NotificationsContext'
 import FormDialog from '../components/FormDialog'
-import { ConfirmDialog, EmptyState, ErrorAlert, Loading, PageHeader, UserPicker } from '../components/common'
+import {
+  ConfirmDialog, EmptyState, ErrorAlert, Loading, PageHeader, ScrollingTable, SortableCell, UserPicker,
+} from '../components/common'
 import { dateTime } from '../utils/format'
+
+const memberName = (m) => `${m.first_name} ${m.last_name}`
 
 /**
  * One team: edit or delete it, and add or remove members. Only the manager's direct reports can join.
- * Managers reach their own teams; admins any team.
+ * Members can be searched by name, job title or ID and sorted by any column. Managers reach their own
+ * teams; admins any team.
  */
 export default function TeamDetailPage() {
   const { teamId } = useParams()
@@ -34,6 +41,13 @@ export default function TeamDetailPage() {
   const [form, setForm] = useState({ name: '', description: '' })
   const [deleting, setDeleting] = useState(false)
   const [removing, setRemoving] = useState(null)
+  const [searchText, setSearchText] = useState('')
+  // A team is small and already loaded, so the search filters in the browser
+  const query = searchText.trim().toLowerCase()
+  const matching = members.data && (query
+    ? members.data.filter((m) => [memberName(m), m.job_title, m.user_id].some((v) => v?.toLowerCase().includes(query)))
+    : members.data)
+  const sorting = useSort(matching, { name: memberName, jobTitle: (m) => m.job_title, added: (m) => m.added_at })
 
   const back = <Link component={RouterLink} to="/teams" underline="hover" variant="body2">← Teams</Link>
   if (team.loading && !team.data) return <Loading />
@@ -87,33 +101,42 @@ export default function TeamDetailPage() {
           {members.loading && !members.data ? <Loading /> : members.data?.length === 0 ? (
             <EmptyState title="No members yet" />
           ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Job title</TableCell>
-                    <TableCell>Added</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {members.data?.map((m) => (
-                    <TableRow key={m.user_id} sx={{ opacity: m.is_active ? 1 : 0.6 }}>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{m.first_name} {m.last_name}</Typography>
-                        <Typography variant="caption" color="text.secondary">ID {m.user_id}{!m.is_active && ' · deactivated'}</Typography>
-                      </TableCell>
-                      <TableCell>{m.job_title}</TableCell>
-                      <TableCell>{dateTime(m.added_at)}</TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Remove from team"><IconButton size="small" onClick={() => setRemoving(m)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <>
+              <TextField id="member-search" placeholder="Search members by name, job title or ID" value={searchText}
+                onChange={(e) => setSearchText(e.target.value)} fullWidth sx={{ maxWidth: 420, mb: 1 }}
+                slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }} />
+              {matching?.length === 0 ? (
+                <EmptyState title="No members match">Try a different name, job title or ID.</EmptyState>
+              ) : (
+                <ScrollingTable label="Team members">
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <SortableCell label="Name" sortKey="name" sorting={sorting} />
+                        <SortableCell label="Job title" sortKey="jobTitle" sorting={sorting} />
+                        <SortableCell label="Added" sortKey="added" sorting={sorting} />
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {sorting.sorted?.map((m) => (
+                        <TableRow key={m.user_id} sx={{ opacity: m.is_active ? 1 : 0.6 }}>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{m.first_name} {m.last_name}</Typography>
+                            <Typography variant="caption" color="text.secondary">ID {m.user_id}{!m.is_active && ' · deactivated'}</Typography>
+                          </TableCell>
+                          <TableCell>{m.job_title}</TableCell>
+                          <TableCell>{dateTime(m.added_at)}</TableCell>
+                          <TableCell align="right">
+                            <Tooltip title="Remove from team"><IconButton size="small" onClick={() => setRemoving(m)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollingTable>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
